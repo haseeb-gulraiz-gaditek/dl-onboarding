@@ -1,0 +1,32 @@
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Node / build
+node_modules/
+dist/
+build/
+.next/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Claude Code local overrides (permissions, not shared)
+.claude/settings.local.json
+
+# SDD / VKF scratch areas
+wip/

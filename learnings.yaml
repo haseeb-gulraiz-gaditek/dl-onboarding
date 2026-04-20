@@ -1,0 +1,17 @@
+# Cycle Learnings
+#
+# Populated by /sdd:complete when a cycle archives.
+# Each entry captures an insight surfaced by working through a cycle —
+# process, technical, or product — that would be useful to future cycles.
+#
+# Format:
+#   - date: YYYY-MM-DD
+#     cycle: "{slug}"
+#     insight: "{one-to-three sentence observation}"
+#     category: "process" | "technical" | "product"
+#
+# Keep entries terse and specific. Don't duplicate what's already in the
+# spec or the archive — write down what was surprising, what you'd tell
+# a teammate in a hallway, what you'd do differently next time.
+
+learnings: []

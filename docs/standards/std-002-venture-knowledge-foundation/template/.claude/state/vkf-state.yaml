@@ -1,0 +1,133 @@
+# VKF State - Venture Knowledge Foundation tracking
+# Location: .claude/state/vkf-state.yaml
+#
+# This file tracks the foundation state for STD-002.
+# Managed by /vkf/* commands.
+
+version: 2
+
+# Standard installation tracking (set during adoption)
+installed_standard_version: null  # e.g., "2.0-rc" — version of STD-002 that was installed
+installed_at: null                # ISO timestamp of last adoption run
+
+# Path Configuration (defaults used when absent)
+# Override these when your repo uses a different documentation layout.
+# Common alternatives: "docs/constitution", "docs/specs/constitution"
+constitution_root: "specs/constitution"
+features_root: "specs/features"
+
+# Knowledge Architecture (STD-002 §3)
+# `docs_root` is the venture knowledge base root. Defaults to "specs" for
+# backward compatibility. Set to "docs" for the recommended layout.
+docs_root: "specs"
+
+# Knowledge Types — taxonomy is normative (the names), adoption is optional
+# (which types you populate). When `knowledge_types` is absent, VKF operates
+# on constitution + feature specs only. When present, it activates type-aware
+# freshness scanning, ingestion routing across 12 targets, and the Knowledge
+# Base Health check in /vkf/validate.
+#
+# Override `path` to map abstract types to your existing folder names — no
+# file moves required. The directory name is convention; the type is metadata.
+knowledge_types:
+  constitution:
+    path: "constitution"         # Relative to docs_root
+    freshness: 90                # Days before REVIEW_DUE
+    governance: amendment        # Uses C0-C3 amendment process
+    required: true               # STD-002 Core tier
+  features:
+    path: "features"
+    freshness: 90
+    governance: sdd              # Managed by STD-001
+    required: true               # At least one feature spec required
+  architecture:
+    path: "architecture"
+    freshness: 180
+    governance: review           # Freshness + ADRs (see §3.5)
+    required: false
+  ux:
+    path: "ux"
+    freshness: 90
+    governance: review
+    required: false
+  reference:
+    path: "reference"
+    freshness: 365
+    governance: none             # No formal governance
+    required: false
+
+# Initialization (set by /vkf/init)
+initialized_at: null        # ISO timestamp (e.g., "2026-02-26T10:00:00Z")
+advanced_tier: false         # true when --advanced flag used with /vkf/init
+
+# Last validation run (set by /vkf/validate)
+last_validation: null        # ISO timestamp
+validation_result:
+  structure: null             # PASS | WARN | FAIL
+  constitution: null          # PASS | WARN | FAIL
+  freshness: null             # PASS | WARN | FAIL
+  workflows: null             # PASS | WARN | FAIL
+  std001_ready: false         # true only when all PASS
+  advanced:                   # INFO-level checks (never WARN/FAIL)
+    ingestion: null            # INFO | null
+    gaps: null                 # INFO | null
+    amendments: null           # INFO | null
+    transcripts: null          # INFO | null
+    audit: null                # INFO | null
+    okrs: null                 # INFO | null
+    workflow: null             # INFO | null
+
+# Last constitution review (set by /vkf/constitution)
+last_constitution_review: null  # ISO timestamp
+
+# Last freshness scan (set by /vkf/freshness)
+last_freshness_scan: null    # ISO timestamp
+stale_specs: []
+  # - path: "specs/features/auth/spec.md"
+  #   status: STALE
+  #   last_reviewed: "2026-01-05"
+  #   commits_since: 3
+
+# --- Advanced Tier State (populated when advanced_tier: true) ---
+
+# Knowledge Ingestion (set by /vkf/ingest)
+last_ingestion: null          # ISO timestamp
+total_ingestions: 0
+
+# Gap Analysis (set by /vkf/gaps)
+last_gap_scan: null           # ISO timestamp
+known_unknowns: []
+  # - id: "KU-001"
+  #   section: "specs/constitution/pmf-thesis.md"
+  #   description: "No quantitative churn data"
+  #   created_at: "2026-03-04"
+  #   resurface_at: "2026-06-02"    # created_at + 90 days
+gap_suppressions: []
+  # - heuristic: "missing_metrics"
+  #   pattern: "NPS in pre-revenue"
+  #   reason: "Not applicable until post-launch"
+  #   created_at: "2026-03-04"
+
+# Constitutional Amendments (set by /vkf/amend)
+last_amendment: null          # ISO timestamp
+total_amendments: 0
+
+# Transcript Processing (set by /vkf/transcript)
+last_transcript: null         # ISO timestamp
+total_transcripts: 0
+
+# OKR Management (set by /vkf/okrs)
+current_okr_quarter: null     # e.g., "2026-Q2"
+last_okr_update: null         # ISO timestamp
+
+# Documentation Workflows (set by /vkf/workflow)
+workflow:
+  documents: {}
+    # "specs/constitution/mission.md":
+    #   state: "Active"           # Draft | Review | Active | Review Due | Archived
+    #   since: "2026-02-15"
+    #   last_trigger: null
+  pending_actions: []
+    # - path: "specs/constitution/positioning.md"
+    #   action: "Review after ingestion ING-005"
+    #   triggered: "2026-03-04"

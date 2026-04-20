@@ -1,0 +1,85 @@
+# VKF State - Venture Knowledge Foundation tracking
+# Location: .claude/state/vkf-state.yaml
+#
+# This file tracks the foundation state for STD-002.
+# Managed by /vkf/* commands.
+
+version: 2
+
+# Standard installation tracking (set during adoption)
+installed_standard_version: "2.1"
+installed_at: null           # set on first /vkf/init
+
+# Path Configuration (defaults used when absent)
+# Override these when your repo uses a different documentation layout.
+constitution_root: "specs/constitution"
+features_root: "specs/features"
+docs_root: "docs"
+
+knowledge_types:
+  constitution:
+    path: "specs/constitution"
+    freshness: 90
+    governance: amendment
+  features:
+    path: "specs/features"
+    freshness: 90
+    governance: sdd
+  architecture:
+    path: "docs/architecture"
+    freshness: 180
+    governance: review
+  reference:
+    path: "docs/reference"
+    freshness: 365
+    governance: none
+
+# Initialization (set by /vkf/init)
+initialized_at: null
+advanced_tier: false
+
+# Last validation run (set by /vkf/validate)
+last_validation: null
+validation_result:
+  structure: null
+  constitution: null
+  freshness: null
+  workflows: null
+  std001_ready: false
+  advanced:
+    ingestion: null
+    gaps: null
+    amendments: null
+    transcripts: null
+    audit: null
+    okrs: null
+    workflow: null
+
+# Last constitution review (set by /vkf/constitution)
+last_constitution_review: null
+
+# Last freshness scan (set by /vkf/freshness)
+last_freshness_scan: null
+stale_specs: []
+
+# --- Advanced Tier State (populated when advanced_tier: true) ---
+
+last_ingestion: null
+total_ingestions: 0
+
+last_gap_scan: null
+known_unknowns: []
+gap_suppressions: []
+
+last_amendment: null
+total_amendments: 0
+
+last_transcript: null
+total_transcripts: 0
+
+current_okr_quarter: null
+last_okr_update: null
+
+workflow:
+  documents: {}
+  pending_actions: []

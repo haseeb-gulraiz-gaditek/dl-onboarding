@@ -1,0 +1,46 @@
+version: 1
+
+discovery:
+  scope: "{{scope}}"
+  target_path: "{{target_path}}"
+  current_state: "{{current_state}}"
+  objectives: "{{objectives}}"
+  success_signals:
+    - "{{signal_1}}"
+    - "{{signal_2}}"
+    - "{{signal_3}}"
+  time_horizon: "{{time_horizon}}"
+  invariants:
+    - "{{invariant_1}}"
+  constraints:
+    - "{{constraint_1}}"
+  prior_failures:
+    - "{{prior_failure_1}}"
+  decision_maker: "{{decision_maker}}"
+  approval_process: "{{approval_process}}"
+  initial_autonomy: "{{autonomy_level}}"
+  discovered_at: "{{discovered_at}}"
+
+cursor:
+  phase: "{{phase}}"
+  cycle_number: 0
+  cycle_stage: null
+  last_checkpoint: null
+  updated_at: "{{updated_at}}"
+
+trust:
+  level: 1
+  checkpoints_skipped: []
+  cycles_completed: 0
+  consecutive_successes: 0
+  last_regression: null
+
+completed_cycles: []
+# Each entry:
+#   - number: 1
+#     slug: "{{slug}}"
+#     hypothesis: "{{hypothesis}}"
+#     outcome: "success|partial|failure"
+#     learnings_count: 0
+#     meta_learnings_count: 0
+#     completed_at: "{{completed_at}}"

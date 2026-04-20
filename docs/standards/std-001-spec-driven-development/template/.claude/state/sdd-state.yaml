@@ -1,0 +1,31 @@
+# SDD State - Lightweight cycle tracking
+# Location: .claude/state/sdd-state.yaml
+#
+# This file tracks the current SDD change cycle.
+# Managed by /sdd/* commands.
+
+version: 1
+
+# Standard installation tracking (set during adoption)
+installed_standard_version: null  # e.g., "1.3" — version of STD-001 that was installed
+installed_at: null                # ISO timestamp of last adoption run
+
+# Tracker integration (set during first use or adoption)
+# "linear" | "github" | "local" | null (auto-detect)
+tracker_preference: null
+
+# Active change cycle (null when no cycle active)
+current_cycle:
+  slug: null          # e.g., "add-dark-mode"
+  phase: null         # proposal | implementation | ready-to-merge
+  started_at: null    # ISO timestamp (e.g., "2026-02-12T10:30:00Z")
+  tracker_ref: null   # e.g., "linear:TEND-42" | "github:#123" | null
+  base_branch: null   # NEW in v1.5: branch /sdd:start was invoked from; used by /sdd:complete for PR target
+  branch_name: null   # NEW in v1.5: actual cycle branch (equals slug, or {NNN}-{slug} on collision)
+
+# Recent completed cycles (for reference)
+# Populated by /sdd/complete
+history: []
+  # - slug: "previous-change"
+  #   completed_at: "2026-02-10T15:00:00Z"
+  #   tasks_completed: 4

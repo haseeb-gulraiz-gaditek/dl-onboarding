@@ -1,0 +1,17 @@
+# SDD State - Spec-Driven Development tracking
+# Location: .claude/state/sdd-state.yaml
+#
+# This file tracks the cycle state for STD-001.
+# Managed by /sdd/* commands. Do not edit by hand.
+
+installed_standard_version: "1.5"
+installed_at: null           # set on first /sdd:start
+tracker_preference: "local"  # "local" | "linear" | "github"
+current_cycle:
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
+history: []

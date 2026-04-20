@@ -1,0 +1,30 @@
+# STD-003 Venture Metrics — State Tracking
+# Managed by /metrics/* commands. Do not edit manually.
+
+initialized_at: null
+standards_detected:
+  std_002: false
+  std_001: false
+last_collection: null
+  # period: "YYYY-MM"
+  # timestamp: "ISO timestamp"
+  # metrics_collected: 0
+  # metrics_skipped: 0
+  # mode: "full | git-only"
+last_report: null
+  # period: "YYYY-MM"
+  # timestamp: "ISO timestamp"
+  # type: "current | compare | trend | cross-venture"
+github_api_configured: false
+tiers_enabled:
+  core: false
+  extended: false
+  advanced: false
+collection_history: []
+  # - period: "YYYY-MM"
+  #   timestamp: "ISO timestamp"
+  #   mode: "full"
+correlation_analysis:
+  last_run: null
+  prs_analyzed: 0
+  sufficient_data: false

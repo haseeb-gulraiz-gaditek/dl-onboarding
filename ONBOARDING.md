@@ -36,7 +36,7 @@ A hands-on, hackathon-style walkthrough. Solo, pair, or team of up to 3.
 - **VKF vs SDD confusion?** VKF governs *who you are and what you build* (constitution, feature-spec layout). SDD governs *how you change what you build* (cycles, proposals, spec-deltas). Knowledge → VKF. Change → SDD.
 - **Constitution question you can't answer?** Mark it as a known unknown via `/vkf/gaps`. Don't fabricate.
 - **Feature change feels too small for a cycle?** It probably is — apply the "bug fix / refactor / config-only" exceptions in STD-001 §2.
-- **Still stuck?** Ask in `#engineering` on Slack. Tag what you tried.
+- **Still stuck?** Ask in `#disrupt-labs` on Slack. Tag what you tried.
 
 ---
 

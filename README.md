@@ -86,4 +86,4 @@ dl-onboarding/
 
 ---
 
-Questions? Ask in `#engineering` on Slack. Improvements to the template? Open a PR against this repo.
+Questions? Ask in `#disrupt-labs` on Slack. **Improvements to the template?** First open a [GitHub issue](https://github.com/disrupt-gt/dl-onboarding/issues/new) describing the change you want, then run through the SDD workflow (`/sdd:start --from {issue-id}`) to propose it. No direct PRs against the template — every change goes through a cycle so the discipline applies to the discipline itself.

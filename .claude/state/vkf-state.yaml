@@ -8,7 +8,7 @@ version: 2
 
 # Standard installation tracking (set during adoption)
 installed_standard_version: "2.1"
-installed_at: null           # set on first /vkf/init
+installed_at: "2026-04-27T20:36:01+05:00"
 
 # Path Configuration (defaults used when absent)
 # Override these when your repo uses a different documentation layout.
@@ -35,7 +35,7 @@ knowledge_types:
     governance: none
 
 # Initialization (set by /vkf/init)
-initialized_at: null
+initialized_at: "2026-04-27T20:36:01+05:00"
 advanced_tier: false
 
 # Last validation run (set by /vkf/validate)

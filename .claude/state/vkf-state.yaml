@@ -56,7 +56,7 @@ validation_result:
     workflow: null
 
 # Last constitution review (set by /vkf/constitution)
-last_constitution_review: null
+last_constitution_review: "2026-04-27T20:36:01+05:00"
 
 # Last freshness scan (set by /vkf/freshness)
 last_freshness_scan: null

@@ -1,7 +1,7 @@
-# [REQUIRED: Venture Name] Product Constitution
+# Mesh Product Constitution
 
-**Established:** [REQUIRED: YYYY-MM-DD]
-**Last amended:** [REQUIRED: YYYY-MM-DD]
+**Established:** 2026-04-27
+**Last amended:** 2026-04-27
 
 ---
 
@@ -9,7 +9,7 @@
 
 | Section | Summary | Status |
 |---------|---------|--------|
-| [Mission](mission.md) | [REQUIRED] | Draft |
+| [Mission](mission.md) | Personal AI concierge for users + precision launch surface for founders | Active |
 | [PMF Thesis](pmf-thesis.md) | [REQUIRED] | Draft |
 | [Personas](personas.md) | [REQUIRED] | Draft |
 | [ICPs](icps.md) | [REQUIRED] | Draft |

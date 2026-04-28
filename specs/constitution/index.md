@@ -10,7 +10,7 @@
 | Section | Summary | Status |
 |---------|---------|--------|
 | [Mission](mission.md) | Personal AI concierge for users + precision launch surface for founders | Active |
-| [PMF Thesis](pmf-thesis.md) | [REQUIRED] | Draft |
+| [PMF Thesis](pmf-thesis.md) | Pre-PMF; two-sided customer (laypeople + founders); evidence-gathering step is a manual concierge test for 30–50 users | Active |
 | [Personas](personas.md) | [REQUIRED] | Draft |
 | [ICPs](icps.md) | [REQUIRED] | Draft |
 | [Positioning](positioning.md) | [REQUIRED] | Draft |

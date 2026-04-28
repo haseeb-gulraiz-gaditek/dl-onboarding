@@ -14,5 +14,5 @@
 | [Personas](personas.md) | [REQUIRED] | Draft |
 | [ICPs](icps.md) | [REQUIRED] | Draft |
 | [Positioning](positioning.md) | [REQUIRED] | Draft |
-| [Principles](principles.md) | [REQUIRED] | Draft |
+| [Principles](principles.md) | Honesty, profile-depth-as-moat, role-split anti-spam, user-side defaults | Active |
 | [Governance](governance.md) | [REQUIRED] | Draft |

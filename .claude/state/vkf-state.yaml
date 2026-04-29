@@ -59,8 +59,12 @@ validation_result:
 last_constitution_review: "2026-04-27T20:36:01+05:00"
 
 # Last freshness scan (set by /vkf/freshness)
-last_freshness_scan: null
-stale_specs: []
+last_freshness_scan: "2026-04-27T20:36:01+05:00"
+stale_specs:
+  - path: "specs/README.md"
+    status: MISSING
+    last_reviewed: null
+    note: "template content from fork; no Last reviewed date"
 
 # --- Advanced Tier State (populated when advanced_tier: true) ---
 

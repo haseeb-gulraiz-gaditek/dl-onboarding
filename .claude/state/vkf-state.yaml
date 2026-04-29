@@ -39,13 +39,13 @@ initialized_at: "2026-04-27T20:36:01+05:00"
 advanced_tier: false
 
 # Last validation run (set by /vkf/validate)
-last_validation: null
+last_validation: "2026-04-27T20:36:01+05:00"
 validation_result:
-  structure: null
-  constitution: null
-  freshness: null
-  workflows: null
-  std001_ready: false
+  structure: PASS
+  constitution: PASS
+  freshness: PASS
+  workflows: PASS
+  std001_ready: true
   advanced:
     ingestion: null
     gaps: null

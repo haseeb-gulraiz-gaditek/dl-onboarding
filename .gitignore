@@ -30,3 +30,7 @@ venv/
 
 # SDD / VKF scratch areas
 wip/
+scratch/
+
+# /lay-of-the-land orientation reports (re-runnable, not venture content)
+lotl-*/

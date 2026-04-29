@@ -18,4 +18,373 @@
 #     notes: |
 #       optional free-form detail
 
-items: []
+items:
+  - id: 1
+    summary: "auth-role-split"
+    priority: critical
+    status: queued
+    added: 2026-04-27
+    notes: |
+      Custom Python email + password auth on FastAPI: bcrypt password
+      hashing, JWT (HS256, 7-day) + httpOnly refresh-token cookie,
+      transactional signup verification email (single SMTP/Postmark
+      exception per system_design Subsystem 7), password reset flow.
+
+      Non-transferable role_type ∈ {user, founder} on every account —
+      this is the structural bedrock the constitution's "Never let
+      founder accounts post in user communities" principle depends on.
+      Role-aware middleware: founder endpoints reject role_type=user
+      and vice versa.
+
+      Anti-abuse: rate limit signup (5/hr/IP) and login (10/min/IP)
+      via slowapi or redis-based middleware.
+
+      Endpoints: POST /api/auth/signup, /api/auth/login, /api/auth/
+      forgot-password, /api/auth/reset-password.
+
+      Size: L. Depends on: nothing — foundation for everything else.
+
+  - id: 2
+    summary: "question-bank-and-answer-capture"
+    priority: critical
+    status: queued
+    added: 2026-04-27
+    notes: |
+      MongoDB `questions` collection seeded with 10–15 hand-authored
+      core questions across categories: role / stack / workflow /
+      friction / wishlist / budget. Each question has key, text,
+      kind (single_select | multi_select | free_text), options[],
+      next_logic (branching), is_core, version, active.
+
+      `answers` collection is append-only — the audit trail for profile
+      evolution.
+
+      `profiles` collection: aggregated from answers via FastAPI
+      handler (role classification, current_tools, workflows,
+      tools_tried_bounced, counterfactual_wishes, budget_tier,
+      last_invalidated_at).
+
+      Endpoints: GET /api/questions/next (next core unanswered via
+      next_logic), POST /api/answers (write + aggregate profile).
+
+      Out of scope for this cycle: live narrowing graph, LLM follow-up
+      questions, Weaviate embeddings — each gets its own cycle.
+
+      Size: L. Depends on: #1.
+
+  - id: 3
+    summary: "catalog-seed-and-curation"
+    priority: high
+    status: queued
+    added: 2026-04-27
+    notes: |
+      Decision: NO Celery scrape job in V1 (changed from earlier
+      system_design draft). Instead: Claude does deep research during
+      this cycle and produces a seed JSON of ~300–500 AI tools.
+
+      Tasks within this cycle's tasks.md will include:
+        - Research and curate ~150 "all-time-best" tools across
+          categories (productivity, creative, ops, content, design,
+          dev, finance, education, lifestyle).
+        - Research ~100 "gaining-traction" tools (notable last 6 mo).
+        - Research ~50 "new" tools (launched last 30 d).
+        - For each: name, slug, tagline, description, url,
+          pricing_summary, categories[], integrations[], labels[]
+          where labels ⊆ {new, all_time_best, gaining_traction}.
+
+      Schema addition to `tools`: `labels: []` field (additive, none
+      of the three labels is mutually exclusive with categories).
+
+      Admin UI at /admin/catalog for add / edit / approve / re-label,
+      plus a manual monthly refresh workflow (also in admin UI).
+
+      Out of scope: scraping infrastructure, automated change
+      detection, AI-agent enrichment — all V1.5+.
+
+      Size: M (research is the bulk; admin UI is small). Depends on: #1.
+
+  - id: 4
+    summary: "weaviate-pipeline"
+    priority: high
+    status: queued
+    added: 2026-04-27
+    notes: |
+      Weaviate as a separate service (not co-located in Mongo).
+
+      Embedding pipelines:
+        - Tool embeddings: on `tools.curation_status=approved`
+          transition, Celery task generates embedding and writes
+          to Weaviate; `tools.embedding_vector_id` updated.
+        - Profile embeddings: on `profiles` mutation, debounced
+          Celery task (30s) regenerates embedding; `profiles.
+          embedding_vector_id` updated.
+
+      Embedding model decision: Claude embeddings vs.
+      sentence-transformers (BGE / similar) — make the call inside
+      this cycle's proposal.md based on cost vs. quality test on
+      the curated 300 tools from #3.
+
+      Out of scope: hybrid BM25 + vector search wiring (that lives
+      in #5 and #6 where it's actually used).
+
+      Size: M. Depends on: #2, #3.
+
+  - id: 5
+    summary: "fast-onboarding-match-and-graph"
+    priority: high
+    status: queued
+    added: 2026-04-27
+    notes: |
+      The user-side magic-moment cycle (per updated system_design v0.2).
+
+      Two-pane /onboarding UX: tap-to-answer questions on the left,
+      live force-directed tool graph on the right. Graph is decorative-
+      but-honest — it shows the actual recommender's current top-K.
+
+      Backend: lightweight POST /api/onboarding/match endpoint doing
+      ONLY Weaviate filter + vector search (no LLM, no clarifier, no
+      ranker). Target latency: <200 ms. Returns top 5–10 candidates.
+      Floor invariant: pool never collapses below 5 tools.
+
+      Frontend lib choice: react-force-graph vs. vis-network vs.
+      D3-force. Make the call as an ADR inside this cycle.
+
+      Re-render trigger: on every answer write. Edges from
+      `tools.metadata` integration / replacement signals.
+
+      End-of-onboarding: full LLM-ranked pass produces 4–5 starter
+      recommendations (vs. 2–3 weekly thereafter — see #6) plus 3
+      community auto-suggestions (no directory browsing in V1).
+
+      Size: L. Depends on: #4.
+
+  - id: 6
+    summary: "recommendation-engine"
+    priority: high
+    status: queued
+    added: 2026-04-27
+    notes: |
+      Full Celery `generate_recommendations` pipeline for the
+      post-onboarding weekly cadence (and the end-of-onboarding
+      starter-rec call).
+
+      Pipeline:
+        a. LLM clarifier (Claude Sonnet) reads profile + last 10
+           answers + request context → structured query
+           {intent, filters, exclude_tools[]}.
+        b. Weaviate hybrid search: BM25 over descriptions + vector
+           similarity (profile ↔ tools) + structured filters.
+           Returns top 20–30 candidates.
+        c. LLM ranker (Sonnet): receives candidates + profile, picks
+           N (4–5 onboarding, 2–3 weekly), writes personalized
+           reasoning string including explicit "skip this" guidance
+           when a hyped match is a poor fit.
+        d. Persist `recommendations` rows; cache_expires_at = now + 7d.
+
+      Cache invalidation: profile mutation bumps
+      `profiles.last_invalidated_at`; cache miss when
+      `cache_expires_at < now` OR `last_invalidated_at > generated_at`.
+
+      Cost ceiling: Sonnet per recommendation; 7-day caching bounds
+      spend; estimated <$0.05 per fresh rec.
+
+      Size: L. Depends on: #2, #4.
+
+  - id: 7
+    summary: "communities-and-flat-comments"
+    priority: high
+    status: queued
+    added: 2026-04-27
+    notes: |
+      Communities + posts + flat comments + voting (V1: NO threading
+      — `parent_comment_id` schema retained, API ignores it; threading
+      deferred to V1.5).
+
+      Seed: ~30–60 communities across 3 axes (role/job-function,
+      tool/stack, problem/outcome). Spawned by Mesh staff; no user-
+      created communities in V1.
+
+      Endpoints:
+        GET /communities, GET /c/:slug, GET /c/:slug/post/:id,
+        POST /api/posts (kind ∈ {launch, using_this_week, discussion,
+                                 tool_review}),
+        POST /api/comments (flat, parent_comment_id always null in V1),
+        POST /api/votes (target_type ∈ {post, comment, tool}),
+        POST /api/communities/:id/{join, leave}.
+
+      Ranking: HN formula (votes-1)/(time+2)^G with G=1.8 default,
+      tunable per community.
+
+      Cross-posting: posts default to one home community; user may
+      fan out to up to 3.
+
+      Anti-spam: founder accounts (role_type=founder) are blocked
+      from posting in community feeds — enforced in middleware.
+      Per-community karma stored in `community_memberships` (V1.5
+      gates posting / flagging).
+
+      Moderation: Mesh staff are mods on every community in V1.
+      Flagging surface (`flagged` bool on posts/comments) feeds an
+      admin queue.
+
+      Size: L. Depends on: #1.
+
+  - id: 8
+    summary: "founder-launch-submission-and-verification"
+    priority: high
+    status: queued
+    added: 2026-04-27
+    notes: |
+      First half of the founder side (split from earlier monolithic
+      "launch flow" cycle).
+
+      Endpoints / flow:
+        POST /founders/signup (separate path; role_type=founder fixed).
+        POST /founders/launch — submit launch:
+          - product_url
+          - 1-line problem_statement
+          - icp_description
+          - existing_presence_links[] (X / LinkedIn / site / GitHub).
+          Saves to `launches` with verification_status=pending.
+        Admin verification UI under /admin/launches with 24h SLA.
+        On approve:
+          - verification_status=approved
+          - Create or link `tools` row with is_founder_launched=true,
+            launched_via_id=launch._id, source=founder_launch.
+          - Send transactional approval email (one of two
+            transactional exceptions in V1; see #12).
+
+      Out of scope for this cycle: dual-fire publish, concierge
+      nudge, redirect tracking — all in #9.
+
+      Size: M. Depends on: #1, #3.
+
+  - id: 9
+    summary: "launch-publish-and-concierge-nudge"
+    priority: high
+    status: queued
+    added: 2026-04-27
+    notes: |
+      Second half of the founder side. Triggered by an approved
+      launch from #8.
+
+      Dual-fire publish:
+        a. Canonical product page at /p/:slug — likes count (denorm
+           from `votes` target_type=tool), review count (from `posts`
+           kind=tool_review with tool_id=this), launch metadata
+           (founder, ICP, problem statement), engagement metrics
+           (clicks, dwell from `engagements`).
+        b. `posts` row with kind=launch, attached_launch_id, in EACH
+           of the founder's 5–6 target communities (founder picks
+           across 3 axes, Mesh suggests defaults). Each community
+           post links back to /p/:slug.
+        c. Celery `scan_launch_for_concierge_matches`: Weaviate query
+           against the founder's ICP description embedding scoring
+           every user profile.
+           **Threshold gate: only top 5% match scores (or hard floor
+           cosine ≥ 0.85) get a `concierge_nudge` notification.**
+           Most launches will nudge 0–30 users, not 30–50.
+
+      Concierge nudge UX: top banner on app open (non-blocking,
+      dismissable) + notification in concierge tab. User responds
+      skip / tell-me-more — each writes an `engagements` row.
+
+      Skip feedback (locked):
+        - Default: silent inference. Mesh downweights the matched
+          tool's category/tag cluster in future matches for this
+          user.
+        - Top-1% skips (where match score was very high but user
+          skipped): one-tap optional follow-up question — wrong
+          category / already use one / pricey / just not now.
+
+      Click-through tracking: GET /r/:launch_id?u=:user_token&s=:surface
+      logs `engagements` row, 302 redirects to product_url with
+      founder UTMs preserved. Optional client-side beacon for
+      dwell-time (debounce ~1.5 s).
+
+      No founder-side JS pixel in V1. No billing in V1 — schema is
+      CPA-ready for V1.5.
+
+      Size: L. Depends on: #6, #7, #8.
+
+  - id: 10
+    summary: "my-tools-explore-new-tabs"
+    priority: medium
+    status: queued
+    added: 2026-04-27
+    notes: |
+      The /tools page with three tabs (NEW from updated system_design
+      v0.2):
+        - /tools/mine: backed by `user_tools` collection.
+          Auto-populated when a user mentions a tool during onboarding
+          answers (matched against catalog) → entry with
+          source=auto_from_profile. Explicit bookmarks add with
+          source=explicit_save.
+        - /tools/explore: full curated catalog browse, filterable
+          by category / tag / pricing / labels.
+        - /tools/new: founder launches only, default-filtered to
+          communities the user has joined.
+
+      `user_tools` collection schema: user_id, tool_id, source ∈
+      {auto_from_profile, explicit_save, manual_add}, status ∈
+      {using, saved} (V1 only sets these two; tried_bounced /
+      want_to_try are V1.5), added_at, last_updated_at.
+
+      Out of scope: detailed status tracking, integration depth,
+      collection management — V1.5+.
+
+      Size: M. Depends on: #3, #7.
+
+  - id: 11
+    summary: "founder-dashboard-and-analytics"
+    priority: medium
+    status: queued
+    added: 2026-04-27
+    notes: |
+      /founders/dashboard with launch list + per-launch
+      /founders/launch/:id/analytics view.
+
+      Per-launch metrics (from `engagements`):
+        - Total clicks
+        - Dwell-time histogram
+        - Matched-user count (anonymized — never expose user identities)
+        - Per-community click breakdown
+        - Concierge-nudge engagement rate (sent / tell-me-more /
+          skip / clicked)
+
+      V1 scope ONLY. Explicitly NOT in V1:
+        - Decline reasons (privacy boundary; aggregate skip data only)
+        - DM-with-users (no founder-to-user direct messaging)
+        - Retention cohort analysis
+
+      Size: M. Depends on: #9.
+
+  - id: 12
+    summary: "notifications-in-app"
+    priority: medium
+    status: queued
+    added: 2026-04-27
+    notes: |
+      `notifications` collection: user_id, kind, payload, created_at,
+      read_at.
+
+      Triggers / UX:
+        - new_recommendation — bell + badge only.
+        - launch_match — bell + top banner on app open
+          (high-priority; only for nudges that passed the #9
+          threshold gate).
+        - community_reply — bell only.
+        - system — admin announcements; bell only.
+
+      Top banner shows the most-recent unread launch_match
+      notification on app open; dismissable to bell-only state.
+
+      Out of scope V1: email digests, browser push.
+
+      Transactional email exceptions (NOT routed through this system):
+        - Founder verification approval email (see #8).
+        - Password reset email (see #1).
+        Both are SMTP / Postmark / Resend single-use, not part of
+        the notifications surface.
+
+      Size: S. Depends on: #7, #9.

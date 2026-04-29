@@ -68,7 +68,10 @@ last_ingestion: "2026-04-27T20:36:01+05:00"
 last_ingestion_id: "ING-001"
 total_ingestions: 1
 
-last_gap_scan: null
+last_gap_scan: "2026-04-27T20:36:01+05:00"
+last_gap_scope: "all"
+gaps_found: 3
+gaps_filtered: 0
 known_unknowns: []
 gap_suppressions: []
 

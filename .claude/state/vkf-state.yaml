@@ -72,8 +72,42 @@ last_gap_scan: "2026-04-27T20:36:01+05:00"
 last_gap_scope: "all"
 gaps_found: 3
 gaps_filtered: 0
-known_unknowns: []
-gap_suppressions: []
+known_unknowns:
+  - id: GAP-001
+    file: "specs/constitution/pmf-thesis.md"
+    section: "Invalidation Criteria #5 / Revenue model"
+    summary: "Revenue model deferred; no founder WTP threshold known"
+    severity: high
+    tracked_at: "2026-04-27"
+    resurface_at: "2026-07-26"
+    resurface_trigger: "founder WTP data from cycle #9 OR 90-day timer"
+  - id: GAP-002
+    file: "specs/constitution/governance.md"
+    section: "(not yet covered) Community moderation post-V1"
+    summary: "V1 = Mesh staff mods. V1.5+ moderation model open."
+    severity: low
+    tracked_at: "2026-04-27"
+    resurface_at: "2026-07-26"
+    resurface_trigger: "≥3 communities × 200 active members OR 90-day timer"
+  - id: GAP-006
+    file: "specs/constitution/pmf-thesis.md"
+    section: "Evidence (cheapest-test plan reference)"
+    summary: "Manual concierge test plan exists in scratch/ but no feature spec yet — becomes a backlog item post-V1"
+    severity: low
+    tracked_at: "2026-04-27"
+    resurface_at: "2026-07-26"
+    resurface_trigger: "V1 has ≥30 active users OR 90-day timer"
+gap_suppressions:
+  - heuristic: H2
+    file: "specs/constitution/mission.md"
+    sections: ["Mission", "Vision"]
+    reason: "template-shaped one-sentence sections by design; H2 thin-section heuristic does not apply"
+    suppressed_at: "2026-04-27"
+  - heuristic: H4
+    file: "specs/constitution/principles.md"
+    pattern: "500 deep"
+    reason: "intentional directional principle (depth > volume) -- the inequality is the point, not the literal numbers; H4 missing-metrics heuristic does not apply"
+    suppressed_at: "2026-04-27"
 
 last_amendment: null
 total_amendments: 0

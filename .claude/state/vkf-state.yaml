@@ -36,7 +36,7 @@ knowledge_types:
 
 # Initialization (set by /vkf/init)
 initialized_at: "2026-04-27T20:36:01+05:00"
-advanced_tier: false
+advanced_tier: true
 
 # Last validation run (set by /vkf/validate)
 last_validation: "2026-04-27T20:36:01+05:00"

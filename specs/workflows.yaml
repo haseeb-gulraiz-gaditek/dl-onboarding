@@ -1,0 +1,9 @@
+# VKF Workflow Triggers - Custom review triggers
+# Location: specs/workflows.yaml
+# Used by /vkf/workflow check
+
+triggers: []
+  # - name: "Monthly competitive review"
+  #   target: "specs/constitution/positioning.md"
+  #   schedule: "30d"
+  #   action: "Review competitive landscape is current"

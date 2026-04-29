@@ -1,0 +1,6 @@
+# VKF Ingestion Log - Audit trail for all knowledge ingestions
+# Location: specs/ingestion-log.yaml
+# Managed by /vkf/ingest and /vkf/transcript commands
+# This file is append-only. Never delete or modify existing entries.
+
+entries: []

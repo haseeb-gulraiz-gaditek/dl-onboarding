@@ -27,6 +27,7 @@ venv/
 
 # Claude Code local overrides (permissions, not shared)
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # SDD / VKF scratch areas
 wip/

@@ -15,4 +15,4 @@
 | [ICPs](icps.md) | Founder-side ICP only: solo / co-founder pair shipping consumer or prosumer AI tooling, post-MVP, pre-100-paying-users | Active |
 | [Positioning](positioning.md) | Context-graph launch platform; 9-competitor landscape; moat is profile depth + honesty brand + structural anti-spam | Active |
 | [Principles](principles.md) | Honesty, profile-depth-as-moat, role-split anti-spam, user-side defaults | Active |
-| [Governance](governance.md) | [REQUIRED] | Draft |
+| [Governance](governance.md) | Solo authority; STD-002 §8 tier alignment with +24h C3 pause; amend-on-first-hire trigger | Active |

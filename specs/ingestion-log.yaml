@@ -3,4 +3,119 @@
 # Managed by /vkf/ingest and /vkf/transcript commands
 # This file is append-only. Never delete or modify existing entries.
 
-entries: []
+entries:
+  - id: ING-001
+    timestamp: "2026-04-27T20:36:01+05:00"
+    source:
+      type: file
+      path: "scratch/basic_idea.md"
+      word_count: 2000
+      format: markdown
+      note: |
+        Gitignored brainstorming doc. The load-bearing source for the
+        full constitution. This entry is provenance-only — no content
+        was written to constitution files because every section was
+        already distilled from this doc during /vkf/constitution runs.
+    extractions:
+      - target: specs/constitution/pmf-thesis.md
+        section: Problem
+        confidence: high
+        excerpt: "Two problems compound. For users: the AI age has flooded the consumer with t"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/mission.md
+        section: Mission + Vision
+        confidence: high
+        excerpt: "Build the canonical context-graph for what people actually want from AI tooli"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/personas.md
+        section: Persona Maya + Persona Aamir
+        confidence: high
+        excerpt: "V1 UX = structured questionnaire, not chat. A flow of tap-to-answer questions"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/principles.md
+        section: Design Tenets (Tapping IS the ritual)
+        confidence: high
+        excerpt: "Profile compounds: more taps -> sharper recommendations -> user comes back to"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/pmf-thesis.md
+        section: Solution
+        confidence: high
+        excerpt: "A launch on Mesh fires on two surfaces simultaneously: 1. Public launch post i"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/positioning.md
+        section: Mesh's Advantage column
+        confidence: high
+        excerpt: "What founders actually get: 1. Surgical targeting -- reach users whose profile"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/* (all sections)
+        section: Locked decisions table
+        confidence: high
+        excerpt: "User-side primary surface: Hybrid: AI concierge (always-on) + niche communiti"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/positioning.md
+        section: Competitive Landscape
+        confidence: high
+        excerpt: "Why this beats the alternatives: Product Hunt -- One-day attention spike -- Va"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/principles.md
+        section: Design Tenets + We Always
+        confidence: high
+        excerpt: "Why this works structurally: Users get value alone, day one -- concierge recom"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/pmf-thesis.md
+        section: Key Assumptions + Invalidation Criteria
+        confidence: high
+        excerpt: "The hardest risks: 1. Honesty perception -- the concierge collapses the moment"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/pmf-thesis.md
+        section: Evidence (final paragraph) + Invalidation Criteria #1-3
+        confidence: high
+        excerpt: "Cheapest test before building: Manually run V1 as a Telegram/Discord channel w"
+        action: log_only
+        reason: already_distilled
+      - target: specs/constitution/pmf-thesis.md
+        section: Evidence (b)(c)
+        confidence: high
+        excerpt: "Source-grounding (load-bearing primary sources): Andrew Chen, Cold Start Probl"
+        action: log_only
+        reason: already_distilled
+        cited_sources:
+          - "Andrew Chen — Cold Start Problem (atomic network thesis)"
+          - "Lenny Rachitsky — How biggest consumer apps got first 1,000 users"
+          - "Substack network mechanic — 40-50% of subs from writer-curated recs"
+          - "Beehiiv Boosts — CPA escrow design"
+          - "Lobsters invite-tree mechanics"
+          - "Hampton — tribal/vetting model at $8M ARR"
+          - "Glassdoor give-to-get"
+          - "Bluesky Custom Feeds — composable algorithmic choice"
+    skipped:
+      - excerpt: "Open question: Question-set design -- the 15-30 onboarding/profile questions"
+        reason: deferred_to_gaps
+        future_home: specs/gaps/ via /vkf/gaps
+      - excerpt: "Open question: Recommendation engine -- rule-based scoring vs embedding match"
+        reason: deferred_to_gaps
+        future_home: specs/gaps/ via /vkf/gaps
+      - excerpt: "Open question: Community moderation model -- who moderates the user-picked co"
+        reason: deferred_to_gaps
+        future_home: specs/gaps/ via /vkf/gaps
+      - excerpt: "Open question: CPA event definition -- exact instrumentation: what counts as"
+        reason: deferred_to_gaps
+        future_home: specs/gaps/ via /vkf/gaps
+      - excerpt: "Open question: Catalog refresh cadence -- weekly manual review, monthly, or e"
+        reason: deferred_to_gaps
+        future_home: specs/gaps/ via /vkf/gaps
+      - excerpt: "Open question: Revenue model (deferred per user request)"
+        reason: deferred_to_gaps
+        future_home: specs/gaps/ via /vkf/gaps
+    files_modified:
+      - specs/ingestion-log.yaml

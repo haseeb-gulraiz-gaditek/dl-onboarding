@@ -64,8 +64,9 @@ stale_specs: []
 
 # --- Advanced Tier State (populated when advanced_tier: true) ---
 
-last_ingestion: null
-total_ingestions: 0
+last_ingestion: "2026-04-27T20:36:01+05:00"
+last_ingestion_id: "ING-001"
+total_ingestions: 1
 
 last_gap_scan: null
 known_unknowns: []

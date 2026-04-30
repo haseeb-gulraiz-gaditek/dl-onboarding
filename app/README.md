@@ -5,8 +5,10 @@ Mesh V1 is a FastAPI + MongoDB monolith. Python 3.12 or newer is required.
 ## 1. Install dependencies
 
 ```bash
-pip install -e '.[dev]'
+pip install -r requirements.txt
 ```
+
+(A virtual environment is recommended: `python -m venv .venv && source .venv/bin/activate` first.)
 
 ## 2. Set up MongoDB
 

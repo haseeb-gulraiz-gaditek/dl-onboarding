@@ -1,0 +1,22 @@
+# Mesh — Python dependencies
+#
+# Single requirements file for V1 (runtime + dev combined). Split
+# into requirements.txt + requirements-dev.txt later if a deploy
+# target needs a leaner runtime install.
+#
+# Install:  pip install -r requirements.txt
+
+# --- Runtime ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+motor>=3.5
+bcrypt>=4.2
+pyjwt>=2.9
+pydantic[email]>=2.8
+python-dotenv>=1.0
+
+# --- Dev / test ---
+pytest>=8.3
+pytest-asyncio>=0.24
+httpx>=0.27
+mongomock-motor>=0.0.34

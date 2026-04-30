@@ -28,8 +28,8 @@
 - [ ] `GET /api/me/founder-only` — smoke endpoint behind `require_role("founder")` (F-AUTH-6)
 
 ### Middleware
-- [ ] FastAPI dependency `current_user` — parse JWT, load user, return user object or raise 401 (F-AUTH-5 error path)
-- [ ] FastAPI dependency factory `require_role(role: Literal["user", "founder"])` — composes `current_user`, raises 403 on role mismatch (F-AUTH-3)
+- [x] FastAPI dependency `current_user` — parse JWT, load user, return user object or raise 401 (F-AUTH-5 error path)
+- [x] FastAPI dependency factory `require_role(role: Literal["user", "founder"])` — composes `current_user`, raises 403 on role mismatch (F-AUTH-3)
 
 ### Tests (one per Given/When/Then in spec-delta)
 - [ ] F-AUTH-1: signup happy path — `finding_tools` → `role_type=user`

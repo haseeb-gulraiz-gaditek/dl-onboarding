@@ -19,7 +19,15 @@ _db: AsyncIOMotorDatabase | None = None
 
 
 async def init_mongo() -> None:
+    """Initialize the global Motor client.
+
+    Idempotent: if `_client` is already set (e.g., a test fixture
+    injected a mongomock client before lifespan ran), this is a
+    no-op.
+    """
     global _client, _db
+    if _client is not None:
+        return
     uri = os.environ.get("MONGODB_URI")
     if not uri:
         raise RuntimeError(

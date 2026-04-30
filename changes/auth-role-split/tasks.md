@@ -32,21 +32,21 @@
 - [x] FastAPI dependency factory `require_role(role: Literal["user", "founder"])` — composes `current_user`, raises 403 on role mismatch (F-AUTH-3)
 
 ### Tests (one per Given/When/Then in spec-delta)
-- [ ] F-AUTH-1: signup happy path — `finding_tools` → `role_type=user`
-- [ ] F-AUTH-1: signup happy path — `launching_product` → `role_type=founder`
-- [ ] F-AUTH-1: signup duplicate email → 409
-- [ ] F-AUTH-1: signup invalid role_question_answer → 400
-- [ ] F-AUTH-1: signup weak password → 400
-- [ ] F-AUTH-1: signup malformed email → 400
-- [ ] F-AUTH-2: login happy path → JWT issued, `last_active_at` updated
-- [ ] F-AUTH-2: login wrong password → 401 invalid_credentials
-- [ ] F-AUTH-2: login unknown email → 401 invalid_credentials (same error message as wrong password)
-- [ ] F-AUTH-3: middleware accepts matching role
-- [ ] F-AUTH-3: middleware rejects mismatched role with 403
-- [ ] F-AUTH-3: middleware rejects unauthenticated with 401
-- [ ] F-AUTH-4: no API path mutates `role_type` (audited test — attempt PATCH /api/me with `{role_type: "..."}` returns 4xx and DB row is unchanged)
-- [ ] F-AUTH-5: `/api/me` returns user payload with valid JWT
-- [ ] F-AUTH-5: `/api/me` returns 401 with no JWT or invalid JWT
+- [x] F-AUTH-1: signup happy path — `finding_tools` → `role_type=user`
+- [x] F-AUTH-1: signup happy path — `launching_product` → `role_type=founder`
+- [x] F-AUTH-1: signup duplicate email → 409
+- [x] F-AUTH-1: signup invalid role_question_answer → 400
+- [x] F-AUTH-1: signup weak password → 400
+- [x] F-AUTH-1: signup malformed email → 400
+- [x] F-AUTH-2: login happy path → JWT issued, `last_active_at` updated
+- [x] F-AUTH-2: login wrong password → 401 invalid_credentials
+- [x] F-AUTH-2: login unknown email → 401 invalid_credentials (same error message as wrong password)
+- [x] F-AUTH-3: middleware accepts matching role
+- [x] F-AUTH-3: middleware rejects mismatched role with 403
+- [x] F-AUTH-3: middleware rejects unauthenticated with 401
+- [x] F-AUTH-4: no API path mutates `role_type` (audited test — attempt PATCH /api/me with `{role_type: "..."}` returns 4xx and DB row is unchanged)
+- [x] F-AUTH-5: `/api/me` returns user payload with valid JWT
+- [x] F-AUTH-5: `/api/me` returns 401 with no JWT or invalid JWT
 
 ## Validation
 

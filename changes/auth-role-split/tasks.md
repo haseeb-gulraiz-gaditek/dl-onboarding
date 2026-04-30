@@ -2,6 +2,14 @@
 
 ## Implementation Checklist
 
+### Project scaffolding (pre-cycle bootstrap — done once, inherited by future cycles)
+- [ ] Create `pyproject.toml` (or `requirements.txt`) with: `fastapi`, `uvicorn`, `motor` (async MongoDB), `bcrypt`, `pyjwt`, `pydantic`, `python-dotenv`, `pytest`, `pytest-asyncio`, `httpx` (for test client)
+- [ ] Project layout: `app/main.py` (FastAPI app + `GET /health`), `app/api/` (routers), `app/db/mongo.py` (Motor client, env-driven URI), `app/models/` (Pydantic schemas), `tests/`
+- [ ] `.env.example` listing required vars: `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRY_DAYS=7`
+- [ ] `docker-compose.yml` for local MongoDB (Mongo 7+ image, port 27017, named volume) — single service, single command to run
+- [ ] `README` snippet at repo root or `app/README.md`: how to install deps, run Mongo (`docker compose up`), run the dev server (`uvicorn app.main:app --reload --port 8000`), run tests (`pytest`)
+- [ ] `pytest.ini` or `pyproject.toml [tool.pytest.ini_options]` with async mode = `auto`
+
 ### Schema + DB
 - [ ] Define MongoDB `users` collection schema: `email`, `password_hash`, `role_type` (`"user"` | `"founder"`), `created_at`, `last_active_at`, `display_name`
 - [ ] Add unique index on `users.email` (case-insensitive — store lowercased)

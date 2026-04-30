@@ -1,0 +1,49 @@
+# Tasks: auth-role-split
+
+## Implementation Checklist
+
+### Schema + DB
+- [ ] Define MongoDB `users` collection schema: `email`, `password_hash`, `role_type` (`"user"` | `"founder"`), `created_at`, `last_active_at`, `display_name`
+- [ ] Add unique index on `users.email` (case-insensitive — store lowercased)
+- [ ] Confirm `role_type` has no API mutation path (no setter, no PATCH, not in any update model)
+
+### Auth core
+- [ ] Implement `hash_password(plain) -> str` and `verify_password(plain, hash) -> bool` using `bcrypt` with `rounds=12`
+- [ ] Implement `issue_jwt(user) -> str` and `decode_jwt(token) -> claims` using HS256 + `JWT_SECRET` env var (7-day expiry)
+- [ ] **Decide JWT transport** (Authorization header OR httpOnly cookie) — document the choice in a comment at the top of the auth router before implementing
+
+### Endpoints
+- [ ] `POST /api/auth/signup` — validate payload (email regex, password ≥ 8, `role_question_answer ∈ {"finding_tools", "launching_product"}`), insert user, return JWT + user payload (F-AUTH-1)
+- [ ] `POST /api/auth/login` — verify credentials, update `last_active_at`, return JWT + user payload (F-AUTH-2)
+- [ ] `GET /api/me` — return current user (F-AUTH-5)
+- [ ] `GET /api/me/user-only` — smoke endpoint behind `require_role("user")` (F-AUTH-6)
+- [ ] `GET /api/me/founder-only` — smoke endpoint behind `require_role("founder")` (F-AUTH-6)
+
+### Middleware
+- [ ] FastAPI dependency `current_user` — parse JWT, load user, return user object or raise 401 (F-AUTH-5 error path)
+- [ ] FastAPI dependency factory `require_role(role: Literal["user", "founder"])` — composes `current_user`, raises 403 on role mismatch (F-AUTH-3)
+
+### Tests (one per Given/When/Then in spec-delta)
+- [ ] F-AUTH-1: signup happy path — `finding_tools` → `role_type=user`
+- [ ] F-AUTH-1: signup happy path — `launching_product` → `role_type=founder`
+- [ ] F-AUTH-1: signup duplicate email → 409
+- [ ] F-AUTH-1: signup invalid role_question_answer → 400
+- [ ] F-AUTH-1: signup weak password → 400
+- [ ] F-AUTH-1: signup malformed email → 400
+- [ ] F-AUTH-2: login happy path → JWT issued, `last_active_at` updated
+- [ ] F-AUTH-2: login wrong password → 401 invalid_credentials
+- [ ] F-AUTH-2: login unknown email → 401 invalid_credentials (same error message as wrong password)
+- [ ] F-AUTH-3: middleware accepts matching role
+- [ ] F-AUTH-3: middleware rejects mismatched role with 403
+- [ ] F-AUTH-3: middleware rejects unauthenticated with 401
+- [ ] F-AUTH-4: no API path mutates `role_type` (audited test — attempt PATCH /api/me with `{role_type: "..."}` returns 4xx and DB row is unchanged)
+- [ ] F-AUTH-5: `/api/me` returns user payload with valid JWT
+- [ ] F-AUTH-5: `/api/me` returns 401 with no JWT or invalid JWT
+
+## Validation
+
+- [ ] All implementation tasks above checked off
+- [ ] All tests pass
+- [ ] Manual smoke: sign up two accounts (different emails, one each role), confirm `/api/me/user-only` 200s for the user account and 403s for the founder account; symmetric for `/api/me/founder-only`
+- [ ] Spec-delta scenarios verifiably hold in implementation
+- [ ] No constitutional regression: `role_type` is set on insert only, never written by any API path

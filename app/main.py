@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from app.db.mongo import close_mongo, init_mongo
+from app.db.users import ensure_indexes as ensure_user_indexes
 
 
 load_dotenv()
@@ -17,6 +18,7 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_mongo()
+    await ensure_user_indexes()
     try:
         yield
     finally:

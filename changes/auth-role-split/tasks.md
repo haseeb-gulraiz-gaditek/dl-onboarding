@@ -11,9 +11,9 @@
 - [x] `pytest.ini` or `pyproject.toml [tool.pytest.ini_options]` with async mode = `auto`
 
 ### Schema + DB
-- [ ] Define MongoDB `users` collection schema: `email`, `password_hash`, `role_type` (`"user"` | `"founder"`), `created_at`, `last_active_at`, `display_name`
-- [ ] Add unique index on `users.email` (case-insensitive — store lowercased)
-- [ ] Confirm `role_type` has no API mutation path (no setter, no PATCH, not in any update model)
+- [x] Define MongoDB `users` collection schema: `email`, `password_hash`, `role_type` (`"user"` | `"founder"`), `created_at`, `last_active_at`, `display_name`
+- [x] Add unique index on `users.email` (case-insensitive — store lowercased)
+- [x] Confirm `role_type` has no API mutation path (no setter, no PATCH, not in any update model)
 
 ### Auth core
 - [ ] Implement `hash_password(plain) -> str` and `verify_password(plain, hash) -> bool` using `bcrypt` with `rounds=12`

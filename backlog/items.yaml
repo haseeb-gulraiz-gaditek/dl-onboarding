@@ -22,10 +22,11 @@ items:
   - id: 1
     summary: "auth-role-split"
     priority: critical
-    status: in_progress
+    status: done
     added: 2026-04-27
     promoted_to_cycle: "auth-role-split"
     promoted_at: "2026-04-30"
+    completed_at: "2026-04-30"
     notes: |
       Custom Python email + password auth on FastAPI: bcrypt password
       hashing, JWT (HS256, 7-day) + httpOnly refresh-token cookie,

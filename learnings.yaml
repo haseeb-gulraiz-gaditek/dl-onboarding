@@ -14,4 +14,42 @@
 # spec or the archive — write down what was surprising, what you'd tell
 # a teammate in a hallway, what you'd do differently next time.
 
-learnings: []
+learnings:
+  - date: 2026-04-30
+    cycle: "auth-role-split"
+    insight: |
+      Tension surfacing at /sdd:start was the highest-leverage moment of the cycle. The
+      first-pass tasks.md inherited every nice-to-have from system_design.md (email
+      verification, password reset, invite tree, slowapi rate limiting). Pushing back at
+      the proposal stage cut those four out of V1 and saved roughly half the cycle. Future
+      cycles: trust the tension list more than the backlog item description; the backlog
+      item is the source's wishlist, the tension list is the cycle's actual scope.
+    category: process
+  - date: 2026-04-30
+    cycle: "auth-role-split"
+    insight: |
+      Deferred decisions belong in the cycle that needs them, not in the proposal. JWT
+      transport (header vs cookie) was scoped as a "decide before implementing" task and
+      decided inside the implementation file's docstring, not in proposal.md. This kept
+      the proposal focused on what the cycle ships and let the decision live next to the
+      code that depends on it. Same model worked for the embedding-model decision deferred
+      to the weaviate-pipeline cycle (#4).
+    category: process
+  - date: 2026-04-30
+    cycle: "auth-role-split"
+    insight: |
+      Lifespan should validate every required env var at boot, not at first-request use.
+      Hit this during manual validation: a fresh .env left JWT_SECRET blank and the failure
+      surfaced as a 500 with a deep traceback at the first signup. Added a lifespan-time
+      check that refuses to boot if any required env is missing. Apply this pattern to
+      every future cycle that adds a new required env variable.
+    category: technical
+  - date: 2026-04-30
+    cycle: "auth-role-split"
+    insight: |
+      mongomock-motor as the test stand-in for MongoDB lets the test suite run offline
+      without Docker or Atlas. Pairing it with making init_mongo() idempotent (skip if
+      _client is already set) was clean: the test fixture pre-injects the mock client,
+      then lifespan's init_mongo() short-circuits. No FastAPI dependency overrides
+      required. Reuse this pattern for cycle #4 (weaviate-pipeline) and beyond.
+    category: testing

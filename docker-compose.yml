@@ -1,0 +1,23 @@
+# Optional local MongoDB for Mesh development.
+#
+# Mesh V1 does NOT require Docker. The recommended path is a free
+# MongoDB Atlas cluster (see .env.example). This file is provided so
+# that the option exists if you ever want a local mongod via Docker
+# without installing the daemon directly on your machine.
+#
+# Run:        docker compose up -d
+# Connect:    MONGODB_URI=mongodb://localhost:27017
+# Tear down:  docker compose down
+# Reset DB:   docker compose down -v   (drops the named volume)
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mesh_mongo_data:/data/db
+
+volumes:
+  mesh_mongo_data:

@@ -50,8 +50,8 @@
 
 ## Validation
 
-- [ ] All implementation tasks above checked off
-- [ ] All tests pass
-- [ ] Manual smoke: sign up two accounts (different emails, one each role), confirm `/api/me/user-only` 200s for the user account and 403s for the founder account; symmetric for `/api/me/founder-only`
-- [ ] Spec-delta scenarios verifiably hold in implementation
-- [ ] No constitutional regression: `role_type` is set on insert only, never written by any API path
+- [x] All implementation tasks above checked off
+- [x] All tests pass
+- [x] Manual smoke: sign up two accounts (different emails, one each role), confirm `/api/me/user-only` 200s for the user account and 403s for the founder account; symmetric for `/api/me/founder-only` — verified via 13-step curl walkthrough on 2026-04-30
+- [x] Spec-delta scenarios verifiably hold in implementation
+- [x] No constitutional regression: `role_type` is set on insert only, never written by any API path — guarded by tests/test_role_immutability.py

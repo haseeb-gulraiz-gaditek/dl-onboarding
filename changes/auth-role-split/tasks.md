@@ -21,11 +21,11 @@
 - [x] **Decide JWT transport** (Authorization header OR httpOnly cookie) — document the choice in a comment at the top of the auth router before implementing → **Authorization header (Bearer token)**, documented at top of `app/auth/jwt.py`
 
 ### Endpoints
-- [ ] `POST /api/auth/signup` — validate payload (email regex, password ≥ 8, `role_question_answer ∈ {"finding_tools", "launching_product"}`), insert user, return JWT + user payload (F-AUTH-1)
-- [ ] `POST /api/auth/login` — verify credentials, update `last_active_at`, return JWT + user payload (F-AUTH-2)
-- [ ] `GET /api/me` — return current user (F-AUTH-5)
-- [ ] `GET /api/me/user-only` — smoke endpoint behind `require_role("user")` (F-AUTH-6)
-- [ ] `GET /api/me/founder-only` — smoke endpoint behind `require_role("founder")` (F-AUTH-6)
+- [x] `POST /api/auth/signup` — validate payload (email regex, password ≥ 8, `role_question_answer ∈ {"finding_tools", "launching_product"}`), insert user, return JWT + user payload (F-AUTH-1)
+- [x] `POST /api/auth/login` — verify credentials, update `last_active_at`, return JWT + user payload (F-AUTH-2)
+- [x] `GET /api/me` — return current user (F-AUTH-5)
+- [x] `GET /api/me/user-only` — smoke endpoint behind `require_role("user")` (F-AUTH-6)
+- [x] `GET /api/me/founder-only` — smoke endpoint behind `require_role("founder")` (F-AUTH-6)
 
 ### Middleware
 - [x] FastAPI dependency `current_user` — parse JWT, load user, return user object or raise 401 (F-AUTH-5 error path)

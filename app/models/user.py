@@ -59,3 +59,15 @@ class AuthResponse(BaseModel):
 
     jwt: str
     user: UserPublic
+
+
+def to_public(doc: dict) -> UserPublic:
+    """Project a stored user document into the client-safe shape."""
+    return UserPublic(
+        id=str(doc["_id"]),
+        email=doc["email"],
+        role_type=doc["role_type"],
+        display_name=doc["display_name"],
+        created_at=doc["created_at"],
+        last_active_at=doc["last_active_at"],
+    )

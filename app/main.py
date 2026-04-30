@@ -4,6 +4,7 @@ Wires the Mongo lifecycle into FastAPI lifespan, mounts routers,
 and translates Pydantic validation errors into the error-code
 shapes mandated by the spec-deltas.
 """
+import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -20,8 +21,23 @@ from app.db.users import ensure_indexes as ensure_user_indexes
 load_dotenv()
 
 
+_REQUIRED_ENV = ("MONGODB_URI", "JWT_SECRET")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Fail fast at boot rather than on the first request that needs
+    # the variable. Each line of .env that's blank or missing surfaces
+    # here with a clear message.
+    missing = [var for var in _REQUIRED_ENV if not os.environ.get(var)]
+    if missing:
+        raise RuntimeError(
+            "Missing required environment variables: "
+            + ", ".join(missing)
+            + ". Copy .env.example to .env and fill them in. "
+            "Generate JWT_SECRET with: "
+            'python -c "import secrets; print(secrets.token_urlsafe(48))"'
+        )
     await init_mongo()
     await ensure_user_indexes()
     try:

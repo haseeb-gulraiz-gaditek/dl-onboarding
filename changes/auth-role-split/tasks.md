@@ -3,7 +3,7 @@
 ## Implementation Checklist
 
 ### Project scaffolding (pre-cycle bootstrap — done once, inherited by future cycles)
-- [ ] Create `pyproject.toml` (or `requirements.txt`) with: `fastapi`, `uvicorn`, `motor` (async MongoDB), `bcrypt`, `pyjwt`, `pydantic`, `python-dotenv`, `pytest`, `pytest-asyncio`, `httpx` (for test client)
+- [x] Create `pyproject.toml` (or `requirements.txt`) with: `fastapi`, `uvicorn`, `motor` (async MongoDB), `bcrypt`, `pyjwt`, `pydantic`, `python-dotenv`, `pytest`, `pytest-asyncio`, `httpx` (for test client)
 - [ ] Project layout: `app/main.py` (FastAPI app + `GET /health`), `app/api/` (routers), `app/db/mongo.py` (Motor client, env-driven URI), `app/models/` (Pydantic schemas), `tests/`
 - [ ] `.env.example` listing required vars: `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRY_DAYS=7`
 - [ ] `docker-compose.yml` for local MongoDB (Mongo 7+ image, port 27017, named volume) — single service, single command to run

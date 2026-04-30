@@ -16,9 +16,9 @@
 - [x] Confirm `role_type` has no API mutation path (no setter, no PATCH, not in any update model)
 
 ### Auth core
-- [ ] Implement `hash_password(plain) -> str` and `verify_password(plain, hash) -> bool` using `bcrypt` with `rounds=12`
-- [ ] Implement `issue_jwt(user) -> str` and `decode_jwt(token) -> claims` using HS256 + `JWT_SECRET` env var (7-day expiry)
-- [ ] **Decide JWT transport** (Authorization header OR httpOnly cookie) — document the choice in a comment at the top of the auth router before implementing
+- [x] Implement `hash_password(plain) -> str` and `verify_password(plain, hash) -> bool` using `bcrypt` with `rounds=12`
+- [x] Implement `issue_jwt(user) -> str` and `decode_jwt(token) -> claims` using HS256 + `JWT_SECRET` env var (7-day expiry)
+- [x] **Decide JWT transport** (Authorization header OR httpOnly cookie) — document the choice in a comment at the top of the auth router before implementing → **Authorization header (Bearer token)**, documented at top of `app/auth/jwt.py`
 
 ### Endpoints
 - [ ] `POST /api/auth/signup` — validate payload (email regex, password ≥ 8, `role_question_answer ∈ {"finding_tools", "launching_product"}`), insert user, return JWT + user payload (F-AUTH-1)

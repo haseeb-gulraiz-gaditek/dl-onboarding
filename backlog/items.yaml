@@ -50,8 +50,10 @@ items:
   - id: 2
     summary: "question-bank-and-answer-capture"
     priority: critical
-    status: queued
+    status: in_progress
     added: 2026-04-27
+    promoted_to_cycle: "question-bank-and-answer-capture"
+    promoted_at: "2026-04-30"
     notes: |
       MongoDB `questions` collection seeded with 10–15 hand-authored
       core questions across categories: role / stack / workflow /

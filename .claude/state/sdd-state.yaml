@@ -8,12 +8,12 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: null
-  phase: null                # proposal | implement | complete
-  started_at: null
-  tracker_ref: null
-  base_branch: null
-  branch_name: null
+  slug: question-bank-and-answer-capture
+  phase: proposal            # proposal | implement | complete
+  started_at: "2026-04-30T22:00:00+05:00"
+  tracker_ref: "backlog:2"
+  base_branch: main
+  branch_name: question-bank-and-answer-capture
 history:
   - slug: auth-role-split
     completed: "2026-04-30"

@@ -83,10 +83,13 @@ async def upsert_tool_by_slug(entry: dict[str, Any]) -> tuple[bool, bool]:
     }
     insert_only = {
         "slug": slug,
-        "curation_status": entry.get("curation_status", "pending"),
+        # Per cycle #4 spec-delta MODIFIED: seed default flips from
+        # "pending" to "approved". Founder-launched tools (cycle #8)
+        # still go through pending->approved review elsewhere.
+        "curation_status": entry.get("curation_status", "approved"),
         "source": entry.get("source", "manual"),
         "created_at": _now(),
-        "embedding_vector_id": None,
+        "embedding": None,
         "last_reviewed_at": None,
         "reviewed_by": None,
         "rejection_comment": None,

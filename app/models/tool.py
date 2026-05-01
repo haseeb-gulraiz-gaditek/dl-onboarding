@@ -54,7 +54,7 @@ class ToolPublic(BaseModel):
     curation_status: CurationStatus
     rejection_comment: str | None = None
     source: Source
-    embedding_vector_id: str | None = None
+    embedding: list[float] | None = None
     created_at: datetime
     last_reviewed_at: datetime | None = None
     reviewed_by: str | None = None
@@ -80,7 +80,7 @@ def to_public(doc: dict) -> ToolPublic:
         curation_status=doc["curation_status"],
         rejection_comment=doc.get("rejection_comment"),
         source=doc.get("source", "manual"),
-        embedding_vector_id=doc.get("embedding_vector_id"),
+        embedding=doc.get("embedding"),
         created_at=doc["created_at"],
         last_reviewed_at=doc.get("last_reviewed_at"),
         reviewed_by=doc.get("reviewed_by"),

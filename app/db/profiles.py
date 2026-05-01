@@ -51,7 +51,7 @@ def _new_profile_doc(user_id: ObjectId) -> dict[str, Any]:
         "tools_tried_bounced": [],
         "counterfactual_wishes": [],
         "budget_tier": None,
-        "embedding_vector_id": None,
+        "embedding": None,
         "last_recompute_at": None,
         "last_invalidated_at": now,
         "exportable": True,

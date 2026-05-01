@@ -3,15 +3,15 @@
 ## Implementation Checklist
 
 ### Env + dependencies
-- [ ] Add `openai>=1.50` to `requirements.txt`
-- [ ] Add `OPENAI_API_KEY` to `_REQUIRED_ENV` in `app/main.py` (joins MONGODB_URI, JWT_SECRET, ADMIN_EMAILS) — F-EMB-1
-- [ ] Update `.env.example` with `OPENAI_API_KEY=` and a link comment (https://platform.openai.com/api-keys)
+- [x] Add `openai>=1.50` to `requirements.txt`
+- [x] Add `OPENAI_API_KEY` to `_REQUIRED_ENV` in `app/main.py` (joins MONGODB_URI, JWT_SECRET, ADMIN_EMAILS) — F-EMB-1
+- [x] Update `.env.example` with `OPENAI_API_KEY=` and a link comment (https://platform.openai.com/api-keys)
 
 ### Schema rename: embedding_vector_id → embedding
-- [ ] `app/db/profiles.py`: rename in `_new_profile_doc` factory; default `embedding: None`
-- [ ] `app/db/tools_seed.py`: rename in `upsert_tool_by_slug` `$setOnInsert`; default `embedding: None`
-- [ ] `app/models/profile.py`: rename Pydantic field
-- [ ] `app/models/tool.py`: rename Pydantic field; update `to_public()` projection
+- [x] `app/db/profiles.py`: rename in `_new_profile_doc` factory; default `embedding: None`
+- [x] `app/db/tools_seed.py`: rename in `upsert_tool_by_slug` `$setOnInsert`; default `embedding: None`. Also flipped seed default `curation_status` from `"pending"` to `"approved"` per F-CAT-3 MODIFIED in this delta
+- [x] `app/models/profile.py`: rename Pydantic field
+- [x] `app/models/tool.py`: rename Pydantic field; update `to_public()` projection
 
 ### Embeddings module
 - [ ] `app/embeddings/__init__.py` — empty package init

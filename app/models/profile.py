@@ -33,7 +33,7 @@ class Profile(BaseModel):
     tools_tried_bounced: list[Any] = Field(default_factory=list)
     counterfactual_wishes: list[Any] = Field(default_factory=list)
     budget_tier: BudgetTier | None = None
-    embedding_vector_id: str | None = None
+    embedding: list[float] | None = None
     last_recompute_at: datetime | None = None
     last_invalidated_at: datetime
     exportable: bool = True

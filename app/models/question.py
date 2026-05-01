@@ -44,3 +44,16 @@ class NextQuestionResponse(BaseModel):
 
     done: bool
     question: QuestionPublic | None = None
+
+
+def to_public(doc: dict) -> QuestionPublic:
+    """Project a stored question document into the client-safe shape."""
+    return QuestionPublic(
+        id=str(doc["_id"]),
+        key=doc["key"],
+        text=doc["text"],
+        kind=doc["kind"],
+        options=[Option(**o) for o in (doc.get("options") or [])],
+        category=doc["category"],
+        order=doc["order"],
+    )

@@ -20,9 +20,9 @@
 - [x] `app/seed/questions.py` — loader function: validate the whole JSON file first, then upsert by `key`, print `inserted/updated/total`. Exit non-zero on validation failure with no partial writes.
 
 ### Endpoints
-- [ ] `app/api/questions.py` — `GET /api/questions/next` behind `Depends(require_role("user"))`; calls `get_or_create_profile`, finds next unanswered core question by `order`, returns `{done, question}` (F-QB-2)
-- [ ] `app/api/answers.py` — `POST /api/answers` behind `Depends(require_role("user"))`; validates value shape against question kind, inserts answer, bumps `profile.last_invalidated_at`, returns next question (F-QB-3)
-- [ ] Mount both routers in `app/main.py`
+- [x] `app/api/questions.py` — `GET /api/questions/next` behind `Depends(require_role("user"))`; calls `get_or_create_profile`, finds next unanswered core question by `order`, returns `{done, question}` (F-QB-2). Exposes `compute_next_question` helper for reuse.
+- [x] `app/api/answers.py` — `POST /api/answers` behind `Depends(require_role("user"))`; validates value shape against question kind, inserts answer, bumps `profile.last_invalidated_at`, returns next question via shared `compute_next_question` helper (F-QB-3)
+- [x] Mount both routers in `app/main.py`; extended global validation handler to map missing `question_id`/`value` to `{error: "field_required", field: ...}`
 
 ### Tests (one per Given/When/Then in spec-delta)
 - [ ] F-QB-1 (seed): seed loads N questions; rerun is idempotent (same DB state, no duplicate keys)

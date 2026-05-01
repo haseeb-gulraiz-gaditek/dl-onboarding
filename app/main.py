@@ -12,8 +12,10 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.api import answers as answers_router
 from app.api import auth as auth_router
 from app.api import me as me_router
+from app.api import questions as questions_router
 from app.db.answers import ensure_indexes as ensure_answer_indexes
 from app.db.mongo import close_mongo, init_mongo
 from app.db.profiles import ensure_indexes as ensure_profile_indexes
@@ -87,6 +89,12 @@ async def _validation_handler(_: Request, exc: RequestValidationError) -> JSONRe
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={"error": "role_question_required"},
             )
+        # F-QB-3 missing-field cases (POST /api/answers).
+        if loc and loc[-1] in ("question_id", "value"):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "field_required", "field": loc[-1]},
+            )
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"error": "invalid_request"},
@@ -95,6 +103,8 @@ async def _validation_handler(_: Request, exc: RequestValidationError) -> JSONRe
 
 app.include_router(auth_router.router)
 app.include_router(me_router.router)
+app.include_router(questions_router.router)
+app.include_router(answers_router.router)
 
 
 @app.get("/health")

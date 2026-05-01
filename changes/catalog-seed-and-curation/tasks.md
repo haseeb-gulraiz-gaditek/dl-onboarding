@@ -24,9 +24,9 @@
 - [x] `app/seed/__main__.py` — extended dispatcher to support `python -m app.seed catalog` (alongside the existing `questions` command)
 
 ### Admin endpoints
-- [ ] `app/api/admin_catalog.py` — `GET /admin/catalog?status=...`, `GET /admin/catalog/{slug}`, `POST /admin/catalog/{slug}/approve`, `POST /admin/catalog/{slug}/reject` — all behind `Depends(require_admin())`
-- [ ] Mount `admin_catalog` router in `app/main.py`
-- [ ] Extend the global `RequestValidationError` handler to map missing `comment` on the reject endpoint to `{error: "field_required", field: "comment"}`
+- [x] `app/api/admin_catalog.py` — `GET /admin/catalog?status=...`, `GET /admin/catalog/{slug}`, `POST /admin/catalog/{slug}/approve`, `POST /admin/catalog/{slug}/reject` — all behind `Depends(require_admin())`. Reject endpoint also rejects whitespace-only comments at the handler layer (Pydantic min_length=1 catches empty string at the schema layer)
+- [x] Mount `admin_catalog` router in `app/main.py`
+- [x] Extend the global `RequestValidationError` handler to map missing `comment` on the reject endpoint to `{error: "field_required", field: "comment"}`
 
 ### Tests
 - [ ] F-CAT-1 (schema): unique index on `slug` enforced (insert two with same slug → DuplicateKeyError)

@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.api import admin_catalog as admin_catalog_router
 from app.api import answers as answers_router
 from app.api import auth as auth_router
 from app.api import me as me_router
@@ -97,6 +98,12 @@ async def _validation_handler(_: Request, exc: RequestValidationError) -> JSONRe
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={"error": "field_required", "field": loc[-1]},
             )
+        # F-CAT-5 missing-comment on POST /admin/catalog/{slug}/reject.
+        if loc and loc[-1] == "comment":
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "field_required", "field": "comment"},
+            )
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"error": "invalid_request"},
@@ -107,6 +114,7 @@ app.include_router(auth_router.router)
 app.include_router(me_router.router)
 app.include_router(questions_router.router)
 app.include_router(answers_router.router)
+app.include_router(admin_catalog_router.router)
 
 
 @app.get("/health")

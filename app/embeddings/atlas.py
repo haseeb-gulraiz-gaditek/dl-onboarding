@@ -61,11 +61,14 @@ PROFILES_VECTOR_INDEX_SPEC: dict[str, Any] = {
 
 def _is_mongomock(coll: Any) -> bool:
     """Detect the test environment so we can fall back to Python-side
-    cosine. AsyncMongoMockClient lives in the mongomock_motor module
-    so its class's module path is the cleanest signal."""
-    client = coll.database.client
-    module_name = type(client).__module__ or ""
-    return module_name.startswith("mongomock_motor") or module_name.startswith("mongomock")
+    cosine. mongomock-motor proxies through real Motor classes, so the
+    type's module path is misleading -- isinstance against the actual
+    AsyncMongoMockClient is the reliable signal."""
+    try:
+        from mongomock_motor import AsyncMongoMockClient
+    except ImportError:
+        return False
+    return isinstance(coll.database.client, AsyncMongoMockClient)
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:

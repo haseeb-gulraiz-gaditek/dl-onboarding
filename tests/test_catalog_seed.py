@@ -37,11 +37,12 @@ async def test_loader_inserts_entries_and_is_idempotent(app_client):
     inserted2, updated2, total2 = await apply_catalog_seed(entries)
     assert (inserted2, updated2, total2) == (0, 0, 3)
 
-    # Defaults applied.
+    # Defaults applied. Per cycle #4 spec-delta MODIFIED, the seed
+    # default flipped from "pending" -> "approved".
     doc = await tools_seed_collection().find_one({"slug": "alpha"})
-    assert doc["curation_status"] == "pending"
+    assert doc["curation_status"] == "approved"
     assert doc["source"] == "manual"
-    assert doc["embedding_vector_id"] is None
+    assert doc["embedding"] is None
     assert doc["created_at"] is not None
 
 

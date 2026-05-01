@@ -20,7 +20,7 @@ def _assert_profile_shape(profile: dict, user_id: ObjectId) -> None:
     assert profile["tools_tried_bounced"] == []
     assert profile["counterfactual_wishes"] == []
     assert profile["budget_tier"] is None
-    assert profile["embedding_vector_id"] is None
+    assert profile["embedding"] is None
     assert profile["last_recompute_at"] is None
     assert profile["last_invalidated_at"] is not None
     assert profile["exportable"] is True

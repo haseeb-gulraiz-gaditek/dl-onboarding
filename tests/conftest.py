@@ -17,6 +17,10 @@ os.environ.setdefault("JWT_EXPIRY_DAYS", "7")
 # Two test admins. Tests that need a non-admin signed-up user simply
 # pick any other email.
 os.environ.setdefault("ADMIN_EMAILS", "admin@example.com,manager@example.com")
+# Cycle #4 (weaviate-pipeline): OpenAI key required at boot.
+# Tests never call the real API -- the mock_openai_embed autouse
+# fixture below monkey-patches embed_text to a deterministic stub.
+os.environ.setdefault("OPENAI_API_KEY", "test-fake-key-not-real")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -175,7 +179,7 @@ _TEST_TOOLS: list[dict] = [
         "curation_status": "pending",
         "rejection_comment": None,
         "source": "manual",
-        "embedding_vector_id": None,
+        "embedding": None,
         "last_reviewed_at": None,
         "reviewed_by": None,
     },
@@ -191,7 +195,7 @@ _TEST_TOOLS: list[dict] = [
         "curation_status": "approved",
         "rejection_comment": None,
         "source": "manual",
-        "embedding_vector_id": None,
+        "embedding": None,
         "last_reviewed_at": None,
         "reviewed_by": None,
     },
@@ -207,7 +211,7 @@ _TEST_TOOLS: list[dict] = [
         "curation_status": "rejected",
         "rejection_comment": "Stale URL.",
         "source": "manual",
-        "embedding_vector_id": None,
+        "embedding": None,
         "last_reviewed_at": None,
         "reviewed_by": "admin@example.com",
     },
@@ -242,3 +246,31 @@ async def non_admin_token(app_client):
     """Sign up a user whose email is NOT in ADMIN_EMAILS."""
     body = await signup_user(app_client, "maya@example.com")
     return {"token": body["jwt"], "email": body["user"]["email"]}
+
+
+# ---- Embeddings fixtures (cycle: weaviate-pipeline) ----
+
+import hashlib  # noqa: E402
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def mock_openai_embed(monkeypatch):
+    """Replace `embed_text` everywhere it's imported with a
+    deterministic 1536-dim vector based on the input text's MD5.
+
+    Autouse so every test gets it for free; tests that need to
+    simulate an OpenAI failure can override with their own
+    monkeypatch.setattr.
+    """
+
+    async def _fake_embed(text: str) -> list[float]:
+        if not text or not text.strip():
+            raise ValueError("embed_text: empty text")
+        digest = hashlib.md5(text.encode("utf-8")).digest()  # 16 bytes
+        # Spread 16 bytes across 1536 dims in [-1.0, 1.0].
+        return [((digest[i % 16] - 128) / 128.0) for i in range(1536)]
+
+    monkeypatch.setattr("app.embeddings.openai.embed_text", _fake_embed)
+    monkeypatch.setattr("app.embeddings.lifecycle.embed_text", _fake_embed)

@@ -253,6 +253,127 @@ async def non_admin_token(app_client):
     return {"token": body["jwt"], "email": body["user"]["email"]}
 
 
+# ---- Onboarding-match fixtures (cycle: fast-onboarding-match-and-graph) ----
+
+
+_MINIMAL_TOOLS: list[dict] = [
+    # 5 marketing tools so role=marketing_ops bucket has >= TOP_K (no fallback).
+    {"slug": "convertkit", "name": "ConvertKit", "category": "marketing", "labels": ["all_time_best"]},
+    {"slug": "hubspot", "name": "HubSpot", "category": "marketing", "labels": ["all_time_best"]},
+    {"slug": "klaviyo", "name": "Klaviyo", "category": "marketing", "labels": ["all_time_best"]},
+    {"slug": "mailchimp", "name": "Mailchimp", "category": "marketing", "labels": ["all_time_best"]},
+    {"slug": "marketo", "name": "Marketo", "category": "marketing", "labels": ["all_time_best"]},
+    # 2 design tools so role=design bucket forces fallback to catalog-wide.
+    {"slug": "figma", "name": "Figma", "category": "design", "labels": ["all_time_best"]},
+    {"slug": "sketch", "name": "Sketch", "category": "design", "labels": ["all_time_best"]},
+    # 1 productivity tool to enrich the catalog-wide pool.
+    {"slug": "notion", "name": "Notion", "category": "productivity", "labels": ["all_time_best"]},
+]
+
+
+@pytest_asyncio.fixture
+async def seed_minimal_catalog(app_client):
+    """Seed 8 approved all_time_best tools across 3 categories.
+
+    Designed for F-MATCH-3 testing:
+      - role=marketing_ops: bucket has 5 (no fallback)
+      - role=design: bucket has 2 (forces fallback to catalog-wide)
+      - no role: catalog-wide alphabetical top-5
+    """
+    from app.db.tools_seed import tools_seed_collection
+
+    now = datetime.now(timezone.utc)
+    docs = []
+    for entry in _MINIMAL_TOOLS:
+        docs.append({
+            **entry,
+            "tagline": f"{entry['name']} tagline",
+            "description": f"{entry['name']} description",
+            "url": f"https://example.com/{entry['slug']}",
+            "pricing_summary": "Free",
+            "curation_status": "approved",
+            "rejection_comment": None,
+            "source": "manual",
+            "embedding": None,
+            "created_at": now,
+            "last_reviewed_at": None,
+            "reviewed_by": None,
+        })
+    await tools_seed_collection().insert_many(docs)
+    yield _MINIMAL_TOOLS
+
+
+@pytest_asyncio.fixture
+async def seed_role_question(app_client):
+    """Seed the production-named `role.primary_function` question with
+    production-named option values so cycle #5 tests can use real
+    role enum strings."""
+    from app.db.questions import questions_collection
+
+    await questions_collection().insert_one({
+        "key": "role.primary_function",
+        "text": "What's your primary job function?",
+        "kind": "single_select",
+        "category": "role",
+        "order": 1,
+        "is_core": True,
+        "active": True,
+        "version": 1,
+        "options": [
+            {"value": "marketing_ops", "label": "Marketing ops"},
+            {"value": "design", "label": "Design"},
+            {"value": "engineering", "label": "Engineering"},
+            {"value": "other", "label": "Other"},
+        ],
+    })
+
+
+async def insert_role_answer(user_id, role_value: str) -> None:
+    """Insert a role.primary_function answer for the user. Caller must
+    ensure the role question already exists (use seed_role_question)."""
+    from bson import ObjectId
+    from app.db.answers import answers_collection
+    from app.db.questions import questions_collection
+
+    role_q = await questions_collection().find_one({"key": "role.primary_function"})
+    assert role_q is not None, (
+        "insert_role_answer requires seed_role_question fixture"
+    )
+    if isinstance(user_id, str):
+        user_id = ObjectId(user_id)
+    await answers_collection().insert_one({
+        "user_id": user_id,
+        "question_id": role_q["_id"],
+        "value": role_value,
+        "is_typed_other": False,
+        "captured_at": datetime.now(timezone.utc),
+    })
+
+
+async def insert_dummy_answers(user_id, count: int) -> None:
+    """Insert `count` answers for the user with arbitrary fresh
+    question_ids (each row counts as a distinct answered question).
+    Used for mode-dispatch tests that don't care about answer content."""
+    from bson import ObjectId
+    from app.db.answers import answers_collection
+
+    if isinstance(user_id, str):
+        user_id = ObjectId(user_id)
+    if count <= 0:
+        return
+    docs = [
+        {
+            "user_id": user_id,
+            "question_id": ObjectId(),
+            "value": f"answer-{i}",
+            "is_typed_other": False,
+            "captured_at": datetime.now(timezone.utc),
+        }
+        for i in range(count)
+    ]
+    await answers_collection().insert_many(docs)
+
+
 # ---- Embeddings fixtures (cycle: weaviate-pipeline) ----
 
 import hashlib  # noqa: E402

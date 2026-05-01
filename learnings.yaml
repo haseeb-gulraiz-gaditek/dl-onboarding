@@ -53,3 +53,38 @@ learnings:
       then lifespan's init_mongo() short-circuits. No FastAPI dependency overrides
       required. Reuse this pattern for cycle #4 (weaviate-pipeline) and beyond.
     category: testing
+  - date: 2026-05-01
+    cycle: "question-bank-and-answer-capture"
+    insight: |
+      Seed loaders need a "split layer" the moment tests touch them. Original
+      seed_questions() owned the full mongo lifecycle (load .env, init_mongo, upsert,
+      close_mongo) -- which closed the test fixture's mongomock client mid-run and
+      broke later assertions. Split into three: load_seed_file (pure), apply_seed
+      (validate + upsert, no lifecycle), seed_questions (CLI orchestrator). Tests
+      call the inner functions; CLI calls the orchestrator. Apply this pattern
+      proactively to cycle #3's catalog seed -- don't repeat the discovery.
+    category: testing
+  - date: 2026-05-01
+    cycle: "question-bank-and-answer-capture"
+    insight: |
+      Defense in depth at multiple layers is worth the cost when the principle is
+      constitutional. require_role("user") on the endpoints is sufficient to bar
+      founders, but get_or_create_profile also rejects founders at the data layer
+      with a separate audit test. Future cycles that mount profile-touching
+      handlers can inadvertently skip the middleware; the helper-layer guard
+      means a regression is caught in tests, not in production. The cost is one
+      if-check and one test. The benefit is that "Never let founder accounts post
+      in user communities" survives careless refactors.
+    category: process
+  - date: 2026-05-01
+    cycle: "question-bank-and-answer-capture"
+    insight: |
+      Schema reservation is cheap and prevents migration drama. The profiles
+      collection schema in this cycle includes role, current_tools, workflows,
+      tools_tried_bounced, counterfactual_wishes, budget_tier, embedding_vector_id,
+      last_recompute_at -- all explicitly null/empty defaults populated by
+      future cycles. No fields are inferred or computed in this cycle, but
+      naming them now means future cycles add behavior without schema
+      migrations. Mongo makes this almost free; do it for every mutable
+      document a future cycle will touch.
+    category: technical

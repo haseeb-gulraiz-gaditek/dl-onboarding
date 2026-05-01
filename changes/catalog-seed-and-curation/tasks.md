@@ -8,12 +8,12 @@
 - [x] Wire `ensure_indexes` into the FastAPI lifespan in `app/main.py`
 
 ### Models
-- [ ] `app/models/tool.py` — `Category` and `Label` literal types matching the prompt's enums; `Tool` (DB shape), `ToolPublic` (client shape with `id` as string), `ToolReject` (request body for reject endpoint), `to_public(doc)` helper
+- [x] `app/models/tool.py` — `Category`, `Label`, `CurationStatus`, `Source` literal types matching the prompt's enums; `ToolPublic` (client shape), `ToolReject` (request body for reject endpoint), `to_public(doc)` helper
 
 ### Admin auth
-- [ ] `app/auth/admin.py` — `require_admin()` dependency that reads `ADMIN_EMAILS` env (comma-separated, lowercased), composes `current_user`, and rejects non-admin emails with 403 `admin_only`
-- [ ] Add `ADMIN_EMAILS` to `_REQUIRED_ENV` in `app/main.py` so the app refuses to boot with it unset (F-CAT-6)
-- [ ] Update `.env.example` with `ADMIN_EMAILS=` and a comment explaining the comma-separated format
+- [x] `app/auth/admin.py` — `require_admin()` dependency that reads `ADMIN_EMAILS` env (comma-separated, lowercased), composes `current_user`, and rejects non-admin emails with 403 `admin_only`
+- [x] Add `ADMIN_EMAILS` to `_REQUIRED_ENV` in `app/main.py` so the app refuses to boot with it unset (F-CAT-6)
+- [x] Update `.env.example` with `ADMIN_EMAILS=` and a comment explaining the comma-separated format
 
 ### Research prompt + catalog file
 - [x] Author `app/seed/catalog-research-prompt.md` (committed at cycle start; see this cycle's first commit)

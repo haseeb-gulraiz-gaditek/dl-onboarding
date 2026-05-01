@@ -27,7 +27,7 @@ from app.db.users import ensure_indexes as ensure_user_indexes
 load_dotenv()
 
 
-_REQUIRED_ENV = ("MONGODB_URI", "JWT_SECRET")
+_REQUIRED_ENV = ("MONGODB_URI", "JWT_SECRET", "ADMIN_EMAILS")
 
 
 @asynccontextmanager

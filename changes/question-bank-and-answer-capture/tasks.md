@@ -53,8 +53,8 @@
 
 ## Validation
 
-- [ ] All implementation tasks above checked off
-- [ ] All tests pass (full suite — cycle #1 tests must continue to pass)
-- [ ] Manual smoke: sign up two accounts (user + founder); user calls `/api/questions/next` repeatedly, answers each via `/api/answers`, eventually gets `{done: true}`; founder gets 403 on both endpoints; questions appear in `order`
-- [ ] Spec-delta scenarios verifiably hold in implementation
-- [ ] No constitutional regression: founder profile cannot be created (`get_or_create_profile` audit test green); `profiles.exportable` is always `true`
+- [x] All implementation tasks above checked off
+- [x] All tests pass (full suite — cycle #1's 19 + cycle #2's 21 = 40 tests, all green)
+- [x] Manual smoke: sign up two accounts (user + founder); user calls `/api/questions/next` repeatedly, answers each via `/api/answers`, eventually gets `{done: true}`; founder gets 403 on both endpoints; questions appear in `order` — verified on 2026-05-01
+- [x] Spec-delta scenarios verifiably hold in implementation
+- [x] No constitutional regression: founder profile cannot be created (`get_or_create_profile` audit test green); `profiles.exportable` is always `true`

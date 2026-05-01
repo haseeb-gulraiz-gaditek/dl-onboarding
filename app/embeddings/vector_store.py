@@ -169,6 +169,20 @@ async def init_weaviate_schema() -> int:
 
 # ---- Publish / delete (best-effort writes) ----
 
+async def _upsert(coll: Any, uid: str, properties: dict[str, Any], vector: list[float]) -> None:
+    """True upsert by UUID: try insert first; on conflict, replace.
+
+    Weaviate v4 splits the operation: `insert` raises if UUID exists;
+    `replace` raises if UUID does NOT exist. Neither is upsert on its
+    own. Try insert -> fall back to replace on any failure (which
+    catches the "already exists" case).
+    """
+    try:
+        await coll.data.insert(uuid=uid, properties=properties, vector=vector)
+    except Exception:
+        await coll.data.replace(uuid=uid, properties=properties, vector=vector)
+
+
 async def publish_tool(
     *, slug: str, vector: list[float], properties: dict[str, Any]
 ) -> None:
@@ -179,11 +193,7 @@ async def publish_tool(
         return
     try:
         coll = client.collections.use(TOOL_CLASS)
-        await coll.data.replace(
-            uuid=tool_uuid(slug),
-            properties=properties,
-            vector=vector,
-        )
+        await _upsert(coll, tool_uuid(slug), properties, vector)
     except Exception as exc:
         print(f"[vector_store] publish_tool failed for {slug}: {exc}")
 
@@ -208,11 +218,7 @@ async def publish_profile(
         return
     try:
         coll = client.collections.use(PROFILE_CLASS)
-        await coll.data.replace(
-            uuid=profile_uuid(user_id),
-            properties=properties,
-            vector=vector,
-        )
+        await _upsert(coll, profile_uuid(user_id), properties, vector)
     except Exception as exc:
         print(f"[vector_store] publish_profile failed for {user_id}: {exc}")
 

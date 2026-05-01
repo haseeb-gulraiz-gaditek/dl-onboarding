@@ -60,7 +60,7 @@ async def backfill_tools() -> dict[str, int]:
 
 
 async def _main_async() -> int:
-    load_dotenv()
+    load_dotenv("/home/haseeb/dl-onboarding/.env")
     await init_mongo()
     try:
         result = await backfill_tools()

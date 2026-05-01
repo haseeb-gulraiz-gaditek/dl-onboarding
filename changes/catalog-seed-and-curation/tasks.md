@@ -60,9 +60,9 @@
 
 ## Validation
 
-- [ ] All implementation tasks above checked off
-- [ ] `app/seed/catalog.json` exists in the repo (300 entries from external agent run)
-- [ ] All tests pass (full suite — cycles #1 + #2 must continue to pass)
-- [ ] Manual smoke: `ADMIN_EMAILS=<your-email>` in `.env`; sign up that email as a user; run `python -m app.seed catalog`; visit `GET /admin/catalog?status=pending` and see the imported tools; approve one + reject one with a comment; verify the changes via `GET /admin/catalog/{slug}`
-- [ ] Spec-delta scenarios verifiably hold in implementation
-- [ ] No constitutional regression: `tools_seed` does not contain any `source="founder_launch"` rows (audit test green); `ADMIN_EMAILS` is required at boot
+- [x] All implementation tasks above checked off
+- [x] `app/seed/catalog.json` exists in the repo — 547 entries from the external agent run (over the 300 target)
+- [x] All tests pass (full suite — 64 tests across cycles #1, #2, #3, all green)
+- [x] Manual smoke: catalog seeded, admin endpoints exercised against approve/reject (with and without comment), audit-test confirmed founder-launched protection holds — verified by user on 2026-05-01
+- [x] Spec-delta scenarios verifiably hold in implementation
+- [x] No constitutional regression: `tools_seed` does not contain any `source="founder_launch"` rows (audit test green); `ADMIN_EMAILS` is required at boot

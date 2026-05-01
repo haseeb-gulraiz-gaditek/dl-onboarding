@@ -3,18 +3,18 @@
 ## Implementation Checklist
 
 ### Models
-- [ ] `app/models/onboarding.py` — `OnboardingToolCard` (subset of ToolPublic with only user-facing fields: slug, name, tagline, description, url, pricing_summary, category, labels), `MatchResponse` (mode discriminator + tools list). `tool_to_card(doc)` projection helper
+- [x] `app/models/onboarding.py` — `OnboardingToolCard`, `MatchMode` literal, `MatchResponse`, `tool_to_card` projection helper
 
 ### Role mapping
-- [ ] `app/onboarding/__init__.py` — empty package init
-- [ ] `app/onboarding/role_map.py` — `ROLE_TO_CATEGORIES` constant per F-MATCH-6 + `categories_for_role(role)` lookup helper that returns `[]` for unknown / None roles
+- [x] `app/onboarding/__init__.py` — empty package init
+- [x] `app/onboarding/role_map.py` — `ROLE_TO_CATEGORIES` constant + `categories_for_role(role)` lookup helper
 
 ### Mode selection + match logic
-- [ ] `app/onboarding/match.py` — `GENERIC_MODE_MAX_ANSWERS = 3` constant; `count_distinct_answers(user_id)` helper using `app.db.answers`; `latest_role_for_user(user_id)` helper that finds the most-recent answer to the `role.primary_function` question (returns string or None); `generic_match(user)` returns up to 5 tools per F-MATCH-3 (role-bucket query → fallback to all_time_best); `embedding_match(user)` returns up to 5 tools per F-MATCH-4 (ensure_profile_embedding → similarity_search)
+- [x] `app/onboarding/match.py` — `GENERIC_MODE_MAX_ANSWERS=3`, `TOP_K=5`, `count_distinct_answers`, `latest_role_for_user`, `generic_match` (role-bucket → fallback), `embedding_match` (ensure_profile_embedding → similarity_search)
 
 ### Endpoint
-- [ ] `app/api/onboarding.py` — `POST /api/onboarding/match` behind `Depends(require_role("user"))`. Calls `count_distinct_answers`, dispatches to `generic_match` or `embedding_match`, wraps in MatchResponse. Catches OpenAI exceptions in embedding mode and falls back to generic mode (logs warning, response mode = "generic")
-- [ ] Mount router in `app/main.py`
+- [x] `app/api/onboarding.py` — `POST /api/onboarding/match` behind `require_role("user")`; dispatches by answered_count; catches embedding-mode exceptions and falls back to generic
+- [x] Mount router in `app/main.py`
 
 ### Tests
 - [ ] F-MATCH-1: unauthenticated request returns 401 auth_required

@@ -16,6 +16,7 @@ from app.api import admin_catalog as admin_catalog_router
 from app.api import answers as answers_router
 from app.api import auth as auth_router
 from app.api import me as me_router
+from app.api import onboarding as onboarding_router
 from app.api import questions as questions_router
 from app.db.answers import ensure_indexes as ensure_answer_indexes
 from app.db.mongo import close_mongo, init_mongo
@@ -124,6 +125,7 @@ app.include_router(me_router.router)
 app.include_router(questions_router.router)
 app.include_router(answers_router.router)
 app.include_router(admin_catalog_router.router)
+app.include_router(onboarding_router.router)
 
 
 @app.get("/health")

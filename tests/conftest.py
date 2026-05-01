@@ -14,6 +14,9 @@ os.environ.setdefault("JWT_SECRET", "test-secret-mesh-suite-not-for-prod-use")
 os.environ.setdefault("MONGODB_URI", "mongodb://test")
 os.environ.setdefault("MONGODB_DB", "mesh_test")
 os.environ.setdefault("JWT_EXPIRY_DAYS", "7")
+# Two test admins. Tests that need a non-admin signed-up user simply
+# pick any other email.
+os.environ.setdefault("ADMIN_EMAILS", "admin@example.com,manager@example.com")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -152,3 +155,90 @@ async def signed_up_user_with_profile(client, email: str = "maya@example.com") -
         "user": body["user"],
         "first": r.json(),
     }
+
+
+# ---- Catalog fixtures (cycle: catalog-seed-and-curation) ----
+
+from datetime import datetime, timezone  # noqa: E402
+
+
+_TEST_TOOLS: list[dict] = [
+    {
+        "slug": "test-tool-pending",
+        "name": "Test Tool Pending",
+        "tagline": "A pending test tool.",
+        "description": "Used to verify pending-state filtering and approve flows.",
+        "url": "https://example.com/pending",
+        "pricing_summary": "Free",
+        "category": "productivity",
+        "labels": ["all_time_best"],
+        "curation_status": "pending",
+        "rejection_comment": None,
+        "source": "manual",
+        "embedding_vector_id": None,
+        "last_reviewed_at": None,
+        "reviewed_by": None,
+    },
+    {
+        "slug": "test-tool-approved",
+        "name": "Test Tool Approved",
+        "tagline": "An already-approved test tool.",
+        "description": "Used to verify approved-state filtering.",
+        "url": "https://example.com/approved",
+        "pricing_summary": "$10/mo",
+        "category": "writing",
+        "labels": ["gaining_traction"],
+        "curation_status": "approved",
+        "rejection_comment": None,
+        "source": "manual",
+        "embedding_vector_id": None,
+        "last_reviewed_at": None,
+        "reviewed_by": None,
+    },
+    {
+        "slug": "test-tool-rejected",
+        "name": "Test Tool Rejected",
+        "tagline": "An already-rejected test tool.",
+        "description": "Used to verify rejected-state filtering and re-approve flows.",
+        "url": "https://example.com/rejected",
+        "pricing_summary": "Free",
+        "category": "engineering",
+        "labels": ["new"],
+        "curation_status": "rejected",
+        "rejection_comment": "Stale URL.",
+        "source": "manual",
+        "embedding_vector_id": None,
+        "last_reviewed_at": None,
+        "reviewed_by": "admin@example.com",
+    },
+]
+
+
+@pytest_asyncio.fixture
+async def seed_test_catalog(app_client):
+    """Seed three fixed tool entries spanning all three curation states."""
+    from app.db.tools_seed import tools_seed_collection
+
+    now = datetime.now(timezone.utc)
+    docs = []
+    for t in _TEST_TOOLS:
+        d = dict(t)
+        d["created_at"] = now
+        docs.append(d)
+    await tools_seed_collection().insert_many(docs)
+    yield _TEST_TOOLS
+
+
+@pytest_asyncio.fixture
+async def admin_token(app_client):
+    """Sign up admin@example.com (in ADMIN_EMAILS allowlist) and return
+    {token, email}."""
+    body = await signup_user(app_client, "admin@example.com")
+    return {"token": body["jwt"], "email": body["user"]["email"]}
+
+
+@pytest_asyncio.fixture
+async def non_admin_token(app_client):
+    """Sign up a user whose email is NOT in ADMIN_EMAILS."""
+    body = await signup_user(app_client, "maya@example.com")
+    return {"token": body["jwt"], "email": body["user"]["email"]}

@@ -29,27 +29,34 @@
 - [x] Extend the global `RequestValidationError` handler to map missing `comment` on the reject endpoint to `{error: "field_required", field: "comment"}`
 
 ### Tests
-- [ ] F-CAT-1 (schema): unique index on `slug` enforced (insert two with same slug → DuplicateKeyError)
-- [ ] F-CAT-3 (loader): valid JSON loads N entries; rerun is idempotent; defaults applied (curation_status=pending, source=manual)
-- [ ] F-CAT-3 (loader): re-running with edited `tagline` updates the existing row in place
-- [ ] F-CAT-3 (loader): seed with bad shape (unknown category) raises ValueError, no partial writes
-- [ ] F-CAT-3 (loader): seed with duplicate slugs raises ValueError, no partial writes
-- [ ] F-CAT-3 (loader): loader does NOT touch a manually-inserted row with `source="founder_launch"` (defense-in-depth audit)
-- [ ] F-CAT-4 (auth): admin email in allowlist passes; non-admin email returns 403 `admin_only`
-- [ ] F-CAT-4 (auth): unauthenticated request returns 401 `auth_required`
-- [ ] F-CAT-4 (auth): admin email check is case-insensitive (USER@example.com == user@example.com)
-- [ ] F-CAT-5: GET /admin/catalog returns all entries by default
-- [ ] F-CAT-5: GET /admin/catalog?status=pending filters correctly
-- [ ] F-CAT-5: GET /admin/catalog/{slug} returns one entry; 404 on unknown slug
-- [ ] F-CAT-5: approve sets status, last_reviewed_at, reviewed_by; clears rejection_comment
-- [ ] F-CAT-5: reject with comment sets status, comment, reviewer; rejecting an already-rejected entry overwrites the comment
-- [ ] F-CAT-5: reject with missing comment → 400 field_required, field=comment
-- [ ] F-CAT-5: reject with whitespace-only comment → 400 comment_invalid
-- [ ] F-CAT-5: approve/reject on unknown slug → 404 tool_not_found
+- [x] F-CAT-3 (loader): valid JSON loads N entries; rerun is idempotent; defaults applied (curation_status=pending, source=manual)
+- [x] F-CAT-3 (loader): re-running with edited `tagline` updates the existing row in place
+- [x] F-CAT-3 (loader): seed with bad shape (unknown category) raises ValueError, no partial writes
+- [x] F-CAT-3 (loader): seed with duplicate slugs raises ValueError, no partial writes
+- [x] F-CAT-3 (loader): invalid URL raises (additional shape check)
+- [x] F-CAT-3 (loader): loader does NOT touch a manually-inserted row with `source="founder_launch"` (defense-in-depth audit)
+- [x] F-CAT-4 (auth): admin email in allowlist passes
+- [x] F-CAT-4 (auth): non-admin email returns 403 `admin_only`
+- [x] F-CAT-4 (auth): unauthenticated request returns 401 `auth_required`
+- [x] F-CAT-4 (auth): admin email check is case-insensitive (ADMIN@example.com == admin@example.com)
+- [x] F-CAT-5: GET /admin/catalog returns all entries by default
+- [x] F-CAT-5: GET /admin/catalog?status=pending filters correctly
+- [x] F-CAT-5: GET /admin/catalog?status=blah returns 400 status_invalid (extra: status whitelist)
+- [x] F-CAT-5: GET /admin/catalog/{slug} returns one entry
+- [x] F-CAT-5: GET /admin/catalog/{slug} 404 on unknown slug
+- [x] F-CAT-5: approve sets status, last_reviewed_at, reviewed_by; clears rejection_comment (verified on a previously-rejected entry)
+- [x] F-CAT-5: reject with comment sets status, comment, reviewer
+- [x] F-CAT-5: reject with missing comment → 400 field_required, field=comment
+- [x] F-CAT-5: reject with empty string comment → 400 field_required (Pydantic min_length=1)
+- [x] F-CAT-5: reject with whitespace-only comment → 400 comment_invalid (handler-layer guard)
+- [x] F-CAT-5: approve unknown slug → 404 tool_not_found
+- [x] F-CAT-5: reject unknown slug → 404 tool_not_found
 
 ### Conftest updates
-- [ ] Add `seed_test_catalog` fixture in `tests/conftest.py` that inserts 4–5 fixed tool entries spanning categories and statuses (mix of pending/approved/rejected)
-- [ ] Add `admin_token` fixture: signs up a user with email `admin@example.com`, returns the JWT — relies on `ADMIN_EMAILS=admin@example.com` set in conftest's env setup
+- [x] Set `ADMIN_EMAILS=admin@example.com,manager@example.com` in `tests/conftest.py` env setup so admin auth tests have a stable allowlist
+- [x] Add `seed_test_catalog` fixture inserting 3 tool entries (one each: pending / approved / rejected-with-comment) spanning three categories
+- [x] Add `admin_token` fixture: signs up `admin@example.com` (in allowlist) and returns `{token, email}`
+- [x] Add `non_admin_token` fixture: signs up `maya@example.com` (NOT in allowlist) for negative-path tests
 
 ## Validation
 

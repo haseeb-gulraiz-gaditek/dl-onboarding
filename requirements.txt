@@ -15,6 +15,7 @@ pyjwt>=2.9
 pydantic[email]>=2.8
 python-dotenv>=1.0
 openai>=1.50
+weaviate-client>=4.10
 
 # --- Dev / test ---
 pytest>=8.3

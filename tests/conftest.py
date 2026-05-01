@@ -21,6 +21,11 @@ os.environ.setdefault("ADMIN_EMAILS", "admin@example.com,manager@example.com")
 # Tests never call the real API -- the mock_openai_embed autouse
 # fixture below monkey-patches embed_text to a deterministic stub.
 os.environ.setdefault("OPENAI_API_KEY", "test-fake-key-not-real")
+# Cycle #4 (weaviate-pipeline): vector store env vars. The fake URL
+# guarantees Weaviate connect attempts fail in tests, so the
+# vector_store layer caches None and falls back to Mongo cosine.
+os.environ.setdefault("WEAVIATE_URL", "https://test-fake.weaviate.cloud")
+os.environ.setdefault("WEAVIATE_API_KEY", "test-fake-weaviate-key")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -253,6 +258,18 @@ async def non_admin_token(app_client):
 import hashlib  # noqa: E402
 
 import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _reset_weaviate_client():
+    """Each test gets a fresh "no Weaviate" cached state. The first
+    publish/search call probes WEAVIATE_URL (fake), fails, caches None.
+    Subsequent calls in the same test are silent no-ops."""
+    from app.embeddings.vector_store import reset_weaviate_client_for_tests
+
+    reset_weaviate_client_for_tests()
+    yield
+    reset_weaviate_client_for_tests()
 
 
 @pytest.fixture(autouse=True)

@@ -1,14 +1,39 @@
 """CLI dispatcher for `python -m app.embeddings <command>`.
 
 Currently supports:
-  backfill-tools  -- embed every approved tool that lacks an embedding
+  init-weaviate   -- create the Weaviate schema (ToolEmbedding,
+                     ProfileEmbedding classes). Run once after
+                     setting WEAVIATE_URL + WEAVIATE_API_KEY in .env.
+  backfill-tools  -- embed every approved tool that lacks an
+                     embedding and publish to Weaviate.
 """
+import asyncio
 import sys
 
 from app.embeddings import backfill as backfill_module
 
 
+def _init_weaviate_main() -> None:
+    """Synchronous entry point for `python -m app.embeddings init-weaviate`."""
+    from dotenv import load_dotenv
+
+    from app.embeddings.vector_store import (
+        close_weaviate_client,
+        init_weaviate_schema,
+    )
+
+    async def _run() -> int:
+        load_dotenv()
+        try:
+            return await init_weaviate_schema()
+        finally:
+            await close_weaviate_client()
+
+    sys.exit(asyncio.run(_run()))
+
+
 _COMMANDS = {
+    "init-weaviate": _init_weaviate_main,
     "backfill-tools": backfill_module.main,
 }
 

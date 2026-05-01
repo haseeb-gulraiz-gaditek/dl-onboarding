@@ -1,0 +1,365 @@
+"""Vector store integration: Weaviate Cloud Services with a
+Mongo-side fallback for tests and graceful degradation.
+
+Per spec-delta weaviate-pipeline (amended mid-cycle from Atlas
+Vector Search to Weaviate Cloud per user call).
+
+Architecture:
+  - Mongo `embedding` field on tools_seed / profiles is the source of
+    truth (constitutional invariant: profile is exportable). It is
+    written first, regardless of Weaviate state.
+  - Weaviate is the production search index. `publish_*` is best-
+    effort: failures are logged and the call continues. The next
+    backfill / re-publish picks up missed writes.
+  - similarity_search prefers Weaviate when reachable, falls back to
+    Python-side cosine over Mongo documents otherwise. Tests use the
+    fallback because their fake WEAVIATE_URL fails to connect.
+
+Weaviate v4 client is gRPC-based and async. Lazy-init: the first
+call to `_get_weaviate_client` connects (or fails and caches None).
+"""
+import math
+import os
+import uuid as uuid_module
+from typing import Any
+
+
+# ---- Weaviate class names ----
+
+TOOL_CLASS = "ToolEmbedding"
+PROFILE_CLASS = "ProfileEmbedding"
+
+
+# ---- Stable UUID derivation from app-level keys ----
+
+def tool_uuid(slug: str) -> str:
+    return str(uuid_module.uuid5(uuid_module.NAMESPACE_DNS, f"mesh-tool-{slug}"))
+
+
+def profile_uuid(user_id: str) -> str:
+    return str(uuid_module.uuid5(uuid_module.NAMESPACE_DNS, f"mesh-profile-{user_id}"))
+
+
+# ---- Lazy client lifecycle ----
+
+_client: Any = None
+_init_attempted = False
+
+
+async def _get_weaviate_client() -> Any:
+    """Return a connected async Weaviate client, or None if Weaviate
+    is unreachable / not configured / package missing.
+
+    The result is cached: on failure, None is cached and we don't try
+    again until `reset_weaviate_client_for_tests()` is called.
+    """
+    global _client, _init_attempted
+    if _init_attempted:
+        return _client
+    _init_attempted = True
+
+    url = os.environ.get("WEAVIATE_URL", "").strip()
+    api_key = os.environ.get("WEAVIATE_API_KEY", "").strip()
+    if not url or not api_key:
+        return None
+
+    try:
+        import weaviate
+        from weaviate.classes.init import Auth
+
+        client = weaviate.use_async_with_weaviate_cloud(
+            cluster_url=url,
+            auth_credentials=Auth.api_key(api_key),
+        )
+        await client.connect()
+        _client = client
+        return _client
+    except Exception as exc:
+        print(f"[vector_store] weaviate connection failed: {exc}")
+        _client = None
+        return None
+
+
+async def close_weaviate_client() -> None:
+    """Close the Weaviate client at app shutdown."""
+    global _client, _init_attempted
+    if _client is not None:
+        try:
+            await _client.close()
+        except Exception:
+            pass
+    _client = None
+    _init_attempted = False
+
+
+def reset_weaviate_client_for_tests() -> None:
+    """Test helper: forget the cached client + init-attempted flag so
+    a fresh test can re-probe."""
+    global _client, _init_attempted
+    _client = None
+    _init_attempted = False
+
+
+# ---- Schema bootstrap (called by `python -m app.embeddings init-weaviate`) ----
+
+async def init_weaviate_schema() -> int:
+    """Create the ToolEmbedding and ProfileEmbedding classes if they
+    don't exist. Returns 0 on success, 2 if Weaviate is not
+    reachable / configured."""
+    client = await _get_weaviate_client()
+    if client is None:
+        print(
+            "[init-weaviate] cannot reach Weaviate -- check WEAVIATE_URL "
+            "and WEAVIATE_API_KEY in your .env",
+            flush=True,
+        )
+        return 2
+
+    try:
+        from weaviate.classes.config import (
+            Configure,
+            DataType,
+            Property,
+            VectorDistances,
+        )
+    except ImportError as exc:
+        print(f"[init-weaviate] weaviate-client import failed: {exc}")
+        return 2
+
+    created = []
+    skipped = []
+
+    for cls_name, properties in [
+        (
+            TOOL_CLASS,
+            [
+                Property(name="slug", data_type=DataType.TEXT),
+                Property(name="category", data_type=DataType.TEXT),
+                Property(name="curation_status", data_type=DataType.TEXT),
+                Property(name="labels", data_type=DataType.TEXT_ARRAY),
+            ],
+        ),
+        (
+            PROFILE_CLASS,
+            [
+                Property(name="user_id", data_type=DataType.TEXT),
+            ],
+        ),
+    ]:
+        if await client.collections.exists(cls_name):
+            skipped.append(cls_name)
+            continue
+        await client.collections.create(
+            name=cls_name,
+            properties=properties,
+            vectorizer_config=Configure.Vectorizer.none(),
+            vector_index_config=Configure.VectorIndex.hnsw(
+                distance_metric=VectorDistances.COSINE,
+            ),
+        )
+        created.append(cls_name)
+
+    print(
+        f"[init-weaviate] created: {created or '(none)'} | "
+        f"already-existed: {skipped or '(none)'}",
+        flush=True,
+    )
+    return 0
+
+
+# ---- Publish / delete (best-effort writes) ----
+
+async def publish_tool(
+    *, slug: str, vector: list[float], properties: dict[str, Any]
+) -> None:
+    """Best-effort publish of a tool embedding to Weaviate. Silent skip
+    on any failure (no Weaviate, network blip, etc.)."""
+    client = await _get_weaviate_client()
+    if client is None:
+        return
+    try:
+        coll = client.collections.use(TOOL_CLASS)
+        await coll.data.replace(
+            uuid=tool_uuid(slug),
+            properties=properties,
+            vector=vector,
+        )
+    except Exception as exc:
+        print(f"[vector_store] publish_tool failed for {slug}: {exc}")
+
+
+async def delete_tool(slug: str) -> None:
+    """Best-effort delete from Weaviate."""
+    client = await _get_weaviate_client()
+    if client is None:
+        return
+    try:
+        coll = client.collections.use(TOOL_CLASS)
+        await coll.data.delete_by_id(uuid=tool_uuid(slug))
+    except Exception as exc:
+        print(f"[vector_store] delete_tool failed for {slug}: {exc}")
+
+
+async def publish_profile(
+    *, user_id: str, vector: list[float], properties: dict[str, Any]
+) -> None:
+    client = await _get_weaviate_client()
+    if client is None:
+        return
+    try:
+        coll = client.collections.use(PROFILE_CLASS)
+        await coll.data.replace(
+            uuid=profile_uuid(user_id),
+            properties=properties,
+            vector=vector,
+        )
+    except Exception as exc:
+        print(f"[vector_store] publish_profile failed for {user_id}: {exc}")
+
+
+# ---- similarity_search ----
+
+def _is_mongomock(coll: Any) -> bool:
+    try:
+        from mongomock_motor import AsyncMongoMockClient
+    except ImportError:
+        return False
+    return isinstance(coll.database.client, AsyncMongoMockClient)
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = 0.0
+    norm_a = 0.0
+    norm_b = 0.0
+    for x, y in zip(a, b):
+        dot += x * y
+        norm_a += x * x
+        norm_b += y * y
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 0.0
+    return dot / (math.sqrt(norm_a) * math.sqrt(norm_b))
+
+
+async def _mongo_fallback_search(
+    *,
+    collection_name: str,
+    query_vector: list[float],
+    top_k: int,
+    filters: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Python-side cosine fallback over Mongo documents. Used when
+    Weaviate isn't reachable, OR in tests where mongomock-motor is
+    the active client."""
+    from app.db.mongo import get_db
+
+    coll = get_db()[collection_name]
+    query: dict[str, Any] = {"embedding": {"$ne": None}}
+    if filters:
+        query.update(filters)
+    cursor = coll.find(query)
+    docs = await cursor.to_list(length=None)
+    scored = [
+        (doc, _cosine_similarity(query_vector, doc.get("embedding") or []))
+        for doc in docs
+    ]
+    scored.sort(key=lambda pair: pair[1], reverse=True)
+    return [doc for doc, _ in scored[:top_k]]
+
+
+async def similarity_search(
+    *,
+    collection_name: str,
+    query_vector: list[float],
+    top_k: int = 10,
+    filters: dict[str, Any] | None = None,
+    weaviate_class: str | None = None,
+) -> list[dict[str, Any]]:
+    """Return top-k matching Mongo documents ranked by cosine similarity.
+
+    Production path:
+      1. Try Weaviate `near_vector` against `weaviate_class`. Returns
+         a list of slugs / user_ids. Fetch full documents from Mongo
+         via the corresponding identifier field.
+
+    Fallback paths (any of the below triggers Mongo-side cosine):
+      - mongomock-motor is the active Mongo client (test environment)
+      - Weaviate is unreachable
+      - `weaviate_class` is None
+
+    `collection_name` is always the Mongo collection (`tools_seed` or
+    `profiles`); `weaviate_class` is the corresponding Weaviate class
+    (`ToolEmbedding` / `ProfileEmbedding`).
+    """
+    from app.db.mongo import get_db
+
+    coll = get_db()[collection_name]
+
+    # Test fallback: mongomock client.
+    if _is_mongomock(coll):
+        return await _mongo_fallback_search(
+            collection_name=collection_name,
+            query_vector=query_vector,
+            top_k=top_k,
+            filters=filters,
+        )
+
+    # Production: try Weaviate first.
+    if weaviate_class is not None:
+        client = await _get_weaviate_client()
+        if client is not None:
+            try:
+                from weaviate.classes.query import Filter
+
+                w_coll = client.collections.use(weaviate_class)
+                wvw_filter = None
+                if filters:
+                    wvw_filter = _build_weaviate_filter(filters)
+                resp = await w_coll.query.near_vector(
+                    near_vector=query_vector,
+                    limit=top_k,
+                    filters=wvw_filter,
+                )
+                # Resolve back to Mongo docs by the identifier field.
+                identifier = (
+                    "slug" if collection_name == "tools_seed" else "user_id"
+                )
+                identifiers = [
+                    obj.properties.get(identifier) for obj in resp.objects
+                ]
+                identifiers = [i for i in identifiers if i is not None]
+                if not identifiers:
+                    return []
+                docs = await coll.find(
+                    {identifier: {"$in": identifiers}}
+                ).to_list(length=top_k)
+                # Preserve Weaviate's similarity ranking.
+                order = {ident: i for i, ident in enumerate(identifiers)}
+                docs.sort(key=lambda d: order.get(d.get(identifier), 999))
+                return docs
+            except Exception as exc:
+                print(f"[vector_store] weaviate query failed, falling back: {exc}")
+
+    # Production fallback if Weaviate unreachable or query failed.
+    return await _mongo_fallback_search(
+        collection_name=collection_name,
+        query_vector=query_vector,
+        top_k=top_k,
+        filters=filters,
+    )
+
+
+def _build_weaviate_filter(filters: dict[str, Any]):
+    """Translate a Mongo-style filter dict into a Weaviate v4 Filter
+    expression. Supports equality on strings and `$in` on arrays."""
+    from weaviate.classes.query import Filter
+
+    expr = None
+    for key, value in filters.items():
+        if isinstance(value, dict) and "$in" in value:
+            f = Filter.by_property(key).contains_any(value["$in"])
+        else:
+            f = Filter.by_property(key).equal(value)
+        expr = f if expr is None else (expr & f)
+    return expr

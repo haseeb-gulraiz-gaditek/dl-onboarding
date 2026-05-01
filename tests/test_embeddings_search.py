@@ -8,11 +8,8 @@ index and is exercised by manual validation.
 import pytest
 
 from app.db.tools_seed import tools_seed_collection
-from app.embeddings.atlas import (
-    TOOLS_VECTOR_INDEX_NAME,
-    similarity_search,
-)
 from app.embeddings.lifecycle import ensure_tool_embedding
+from app.embeddings.vector_store import TOOL_CLASS, similarity_search
 
 
 pytestmark = pytest.mark.asyncio
@@ -52,7 +49,7 @@ async def test_similarity_search_returns_top_k_in_cosine_order(
 
     results = await similarity_search(
         collection_name="tools_seed",
-        index_name=TOOLS_VECTOR_INDEX_NAME,
+        weaviate_class=TOOL_CLASS,
         query_vector=q,
         top_k=3,
     )
@@ -69,7 +66,7 @@ async def test_similarity_search_empty_collection_returns_empty(app_client):
 
     results = await similarity_search(
         collection_name="tools_seed",
-        index_name=TOOLS_VECTOR_INDEX_NAME,
+        weaviate_class=TOOL_CLASS,
         query_vector=q,
         top_k=10,
     )
@@ -92,7 +89,7 @@ async def test_similarity_search_filters_narrow_the_set(
     # Filter by category -- only one fixture tool is "writing".
     results = await similarity_search(
         collection_name="tools_seed",
-        index_name=TOOLS_VECTOR_INDEX_NAME,
+        weaviate_class=TOOL_CLASS,
         query_vector=q,
         top_k=10,
         filters={"category": "writing"},

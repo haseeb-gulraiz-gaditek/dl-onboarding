@@ -23,12 +23,20 @@ from app.db.profiles import ensure_indexes as ensure_profile_indexes
 from app.db.questions import ensure_indexes as ensure_question_indexes
 from app.db.tools_seed import ensure_indexes as ensure_tools_seed_indexes
 from app.db.users import ensure_indexes as ensure_user_indexes
+from app.embeddings.vector_store import close_weaviate_client
 
 
 load_dotenv()
 
 
-_REQUIRED_ENV = ("MONGODB_URI", "JWT_SECRET", "ADMIN_EMAILS", "OPENAI_API_KEY")
+_REQUIRED_ENV = (
+    "MONGODB_URI",
+    "JWT_SECRET",
+    "ADMIN_EMAILS",
+    "OPENAI_API_KEY",
+    "WEAVIATE_URL",
+    "WEAVIATE_API_KEY",
+)
 
 
 @asynccontextmanager
@@ -54,6 +62,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        await close_weaviate_client()
         await close_mongo()
 
 

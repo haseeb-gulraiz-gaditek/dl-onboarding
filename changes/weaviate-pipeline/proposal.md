@@ -1,6 +1,6 @@
 # Proposal: weaviate-pipeline
 
-> **Slug-vs-implementation note:** the slug is `weaviate-pipeline` (matches backlog #4), but this cycle uses **MongoDB Atlas Vector Search** instead of Weaviate. Decision recorded in this proposal's *Solution* and `Alternatives Considered`.
+> **Mid-cycle pivot (2026-05-02):** initially scoped this cycle for MongoDB Atlas Vector Search to avoid a second managed service. User opted to switch to **Weaviate Cloud Services free 14-day sandbox** during validation, before the cycle was completed. The proposal/spec-delta were edited in place rather than via `/vkf/amend` because the cycle was still in implementation.
 
 ## Problem
 

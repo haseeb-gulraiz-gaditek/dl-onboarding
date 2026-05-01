@@ -15,7 +15,14 @@ pytestmark = pytest.mark.asyncio
 
 @pytest.mark.parametrize(
     "missing_var",
-    ["MONGODB_URI", "JWT_SECRET", "ADMIN_EMAILS", "OPENAI_API_KEY"],
+    [
+        "MONGODB_URI",
+        "JWT_SECRET",
+        "ADMIN_EMAILS",
+        "OPENAI_API_KEY",
+        "WEAVIATE_URL",
+        "WEAVIATE_API_KEY",
+    ],
 )
 async def test_missing_required_env_raises_at_boot(monkeypatch, missing_var):
     monkeypatch.delenv(missing_var, raising=False)

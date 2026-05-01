@@ -1,10 +1,12 @@
 # Spec Delta: weaviate-pipeline
 
+> **Pivot note (2026-05-02):** During validation, the user opted to switch the vector store from MongoDB Atlas Vector Search to **Weaviate Cloud Services** (free 14-day sandbox). The pivot affects F-EMB-4 / F-EMB-5 (storage layer) and adds two required env vars (`WEAVIATE_URL`, `WEAVIATE_API_KEY`). The Mongo `embedding` field stays as the source of truth for audit / export; Weaviate gets a published copy for production search. similarity_search prefers Weaviate when reachable and falls back to a Python-side cosine over Mongo documents otherwise (used for tests + graceful degradation).
+
 ## ADDED
 
-### F-EMB-1 — `OPENAI_API_KEY` is required at boot
+### F-EMB-1 — Required env vars at boot
 
-`_REQUIRED_ENV` extends from `("MONGODB_URI", "JWT_SECRET", "ADMIN_EMAILS")` to include `OPENAI_API_KEY`. App refuses to boot if any of the four is unset or blank. `.env.example` documents the new var with format guidance and a link to the OpenAI dashboard.
+`_REQUIRED_ENV` is extended to include `OPENAI_API_KEY`, `WEAVIATE_URL`, and `WEAVIATE_API_KEY`. App refuses to boot if any required var is unset or blank. `.env.example` documents the new vars with format guidance and links to the OpenAI dashboard and Weaviate Cloud console.
 
 ---
 
@@ -53,51 +55,26 @@ The helper refuses to run on a founder-role user (defense in depth — founders 
 
 ---
 
-### F-EMB-4 — Atlas Vector Search index definitions
+### F-EMB-4 — Weaviate schema + bootstrap CLI
 
-Two manually-created Atlas search indices, schemas documented as constants in `app/embeddings/atlas.py`.
+The vector store is **Weaviate Cloud Services** (free 14-day sandbox in V1). Two classes live in Weaviate, defined in `app/embeddings/vector_store.py` as constants:
 
-**`tools_seed_vector_index`** on `tools_seed` collection:
-```json
-{
-  "fields": [
-    {
-      "type": "vector",
-      "path": "embedding",
-      "numDimensions": 1536,
-      "similarity": "cosine"
-    },
-    {
-      "type": "filter",
-      "path": "curation_status"
-    },
-    {
-      "type": "filter",
-      "path": "category"
-    },
-    {
-      "type": "filter",
-      "path": "labels"
-    }
-  ]
-}
-```
+**`ToolEmbedding`** with properties:
+- `slug` (TEXT) — joins back to `tools_seed.slug`
+- `category` (TEXT)
+- `curation_status` (TEXT)
+- `labels` (TEXT_ARRAY)
 
-**`profiles_vector_index`** on `profiles` collection:
-```json
-{
-  "fields": [
-    {
-      "type": "vector",
-      "path": "embedding",
-      "numDimensions": 1536,
-      "similarity": "cosine"
-    }
-  ]
-}
-```
+Vector index: HNSW with cosine distance. Vectorizer: none (we generate embeddings via OpenAI; Weaviate only stores them).
 
-V1 ships with these specs documented; the user creates the indices once via the Atlas UI. The app does NOT auto-create them — programmatic creation requires the Atlas Admin API which is V1.5+.
+**`ProfileEmbedding`** with properties:
+- `user_id` (TEXT) — joins back to `profiles.user_id`
+
+Same vector index + vectorizer config.
+
+The user runs `python -m app.embeddings init-weaviate` once after setting `WEAVIATE_URL` and `WEAVIATE_API_KEY`. The CLI is idempotent: if a class already exists, it's skipped; missing classes are created.
+
+**Atlas indices are not used.** The `embedding` field on the Mongo documents stays as the source of truth (audit / export per the *"Treat the user's profile as theirs"* principle) AND a copy is published to Weaviate for production similarity search.
 
 ---
 
@@ -109,22 +86,20 @@ A reusable async helper for cycles #5 and #6:
 async def similarity_search(
     *,
     collection_name: str,
-    index_name: str,
+    weaviate_class: str | None,
     query_vector: list[float],
     top_k: int = 10,
     filters: dict | None = None,
 ) -> list[dict]:
 ```
 
-**Given** a `query_vector` of length 1536, an existing collection name, and an existing Atlas Search index name
-**When** `similarity_search` is called
-**Then** the system runs an Atlas `$vectorSearch` aggregation against the index and returns up to `top_k` documents in similarity-descending order.
+**Three execution paths**, selected automatically:
 
-Optional `filters` are applied via `$vectorSearch.filter` (e.g., `{"curation_status": "approved", "category": "productivity"}`).
+1. **Mongomock fallback (tests):** detected via `isinstance(client, AsyncMongoMockClient)`. Uses Python-side cosine over Mongo documents whose `embedding` is non-null. Tests run offline without needing Weaviate.
+2. **Production via Weaviate:** if `weaviate_class` is provided AND a Weaviate connection succeeded, runs `near_vector` against the named class with optional Mongo-style filters translated to Weaviate `Filter` expressions. Returns the top-k objects' identifiers (slug or user_id), then re-fetches full Mongo documents in similarity order.
+3. **Production fallback (Mongo cosine):** if Weaviate is unreachable for any reason, the helper logs a warning and falls back to the same Python-side cosine path used by tests. Mesh degrades gracefully — slower searches, but search still works.
 
-If the index does not exist, the underlying driver raises a clear error; the helper does not swallow it.
-
-**Test-time exception:** `mongomock-motor` does not support `$vectorSearch`. The test suite uses a Python-side cosine fallback to exercise the helper's contract. Production code path is unchanged; the fallback is detected by checking the client class (`AsyncMongoMockClient`).
+`collection_name` is always the Mongo collection (`tools_seed` or `profiles`); `weaviate_class` is the corresponding Weaviate class name (`ToolEmbedding` / `ProfileEmbedding`). Pass `weaviate_class=None` to force the Mongo cosine path.
 
 ---
 
@@ -183,9 +158,9 @@ The admin reject-with-comment endpoint stays. Approve becomes "re-approve a prev
 ### `_REQUIRED_ENV` in `app/main.py`
 
 **Before:** `("MONGODB_URI", "JWT_SECRET", "ADMIN_EMAILS")`
-**After:** `("MONGODB_URI", "JWT_SECRET", "ADMIN_EMAILS", "OPENAI_API_KEY")`
+**After:** `("MONGODB_URI", "JWT_SECRET", "ADMIN_EMAILS", "OPENAI_API_KEY", "WEAVIATE_URL", "WEAVIATE_API_KEY")`
 
-`.env.example` is updated to include `OPENAI_API_KEY=` with a link comment.
+`.env.example` is updated to include `OPENAI_API_KEY=`, `WEAVIATE_URL=`, and `WEAVIATE_API_KEY=` with link comments to the respective dashboards.
 
 ## REMOVED
 

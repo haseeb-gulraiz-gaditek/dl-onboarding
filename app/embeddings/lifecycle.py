@@ -18,6 +18,11 @@ from app.db.answers import answers_collection
 from app.db.profiles import find_profile_by_user_id, profiles_collection
 from app.db.tools_seed import find_tool_by_slug, tools_seed_collection
 from app.embeddings.openai import embed_text
+from app.embeddings.vector_store import (
+    delete_tool as _vs_delete_tool,
+    publish_profile as _vs_publish_profile,
+    publish_tool as _vs_publish_tool,
+)
 
 
 def _now() -> datetime:
@@ -77,6 +82,17 @@ async def ensure_tool_embedding(slug: str) -> bool:
     await tools_seed_collection().update_one(
         {"slug": slug}, {"$set": {"embedding": vector}}
     )
+    # Best-effort publish to Weaviate (silent skip if unreachable).
+    await _vs_publish_tool(
+        slug=slug,
+        vector=vector,
+        properties={
+            "slug": slug,
+            "category": tool.get("category"),
+            "curation_status": "approved",  # only approved tools get embedded
+            "labels": tool.get("labels") or [],
+        },
+    )
     return True
 
 
@@ -84,11 +100,13 @@ async def clear_tool_embedding(slug: str) -> None:
     """Set the tool's embedding to None (called on reject).
 
     The row stays in the collection (audit trail, future re-approval),
-    but it disappears from similarity-search results because Atlas
-    Vector Search ignores documents whose vector field is null."""
+    but it disappears from similarity-search results because the
+    Mongo-side cosine fallback skips null embeddings AND we delete
+    the corresponding object from Weaviate."""
     await tools_seed_collection().update_one(
         {"slug": slug}, {"$set": {"embedding": None}}
     )
+    await _vs_delete_tool(slug)
 
 
 # ---- Profile embeddings ----
@@ -141,5 +159,11 @@ async def ensure_profile_embedding(user: dict[str, Any]) -> bool:
     await profiles_collection().update_one(
         {"user_id": user["_id"]},
         {"$set": {"embedding": vector, "last_recompute_at": _now()}},
+    )
+    # Best-effort publish to Weaviate.
+    await _vs_publish_profile(
+        user_id=str(user["_id"]),
+        vector=vector,
+        properties={"user_id": str(user["_id"])},
     )
     return True

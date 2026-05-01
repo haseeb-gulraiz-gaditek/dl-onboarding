@@ -1,15 +1,18 @@
 """CLI dispatcher for `python -m app.seed <command>`.
 
 Currently supports:
-  questions   -- load app/seed/questions.json into the `questions` collection
+  questions  -- load app/seed/questions.json into the `questions` collection
+  catalog    -- load app/seed/catalog.json into the `tools_seed` collection
 """
 import sys
 
+from app.seed import catalog as catalog_seed
 from app.seed import questions as questions_seed
 
 
 _COMMANDS = {
     "questions": questions_seed.main,
+    "catalog": catalog_seed.main,
 }
 
 
@@ -24,7 +27,6 @@ def main() -> None:
         print(f"Unknown command: {cmd!r}", file=sys.stderr)
         print(f"Available: {', '.join(sorted(_COMMANDS))}", file=sys.stderr)
         sys.exit(2)
-    # Drop the command from argv so the handler sees its own args.
     sys.argv = [sys.argv[0]] + sys.argv[2:]
     handler()
 

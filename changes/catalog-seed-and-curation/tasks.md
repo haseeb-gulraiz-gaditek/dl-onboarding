@@ -20,8 +20,8 @@
 - [ ] **(USER ACTION)** Run the prompt against an external agent (ChatGPT, Claude, Gemini), save the output verbatim to `app/seed/catalog.json`. This task is checked off when the file lands in the repo via a `[spec]` or `[impl]` commit.
 
 ### Seed loader
-- [ ] `app/seed/catalog.py` — `load_catalog_file(path)` (pure JSON parse, raises ValueError), `apply_catalog_seed(entries)` (validate-whole-file-then-upsert; raises ValueError on bad input; founder-launched protection; defaults applied per F-CAT-3), `seed_catalog()` (CLI orchestrator)
-- [ ] `app/seed/__main__.py` — extend dispatcher to support `python -m app.seed catalog`
+- [x] `app/seed/catalog.py` — `load_catalog_file(path)` (pure JSON parse, raises ValueError), `apply_catalog_seed(entries)` (validate-whole-file-then-upsert; raises ValueError on bad input; founder-launched protection via `upsert_tool_by_slug`; defaults applied per F-CAT-3), `seed_catalog()` (CLI orchestrator)
+- [x] `app/seed/__main__.py` — extended dispatcher to support `python -m app.seed catalog` (alongside the existing `questions` command)
 
 ### Admin endpoints
 - [ ] `app/api/admin_catalog.py` — `GET /admin/catalog?status=...`, `GET /admin/catalog/{slug}`, `POST /admin/catalog/{slug}/approve`, `POST /admin/catalog/{slug}/reject` — all behind `Depends(require_admin())`

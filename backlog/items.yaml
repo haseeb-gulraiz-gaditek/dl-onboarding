@@ -144,8 +144,10 @@ items:
   - id: 5
     summary: "fast-onboarding-match-and-graph"
     priority: high
-    status: queued
+    status: in_progress
     added: 2026-04-27
+    promoted_to_cycle: "fast-onboarding-match-and-graph"
+    promoted_at: "2026-05-02"
     notes: |
       The user-side magic-moment cycle (per updated system_design v0.2).
 

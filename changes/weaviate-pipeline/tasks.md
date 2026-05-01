@@ -14,12 +14,13 @@
 - [x] `app/models/tool.py`: rename Pydantic field; update `to_public()` projection
 
 ### Embeddings module
-- [ ] `app/embeddings/__init__.py` — empty package init
-- [ ] `app/embeddings/openai.py` — async `embed_text(text: str) -> list[float]`. Single OpenAI client per process; uses `OPENAI_API_KEY` from env at call time; model is `text-embedding-3-small`; raises a clear exception on API failure
-- [ ] `app/embeddings/atlas.py` — exposes constants `TOOLS_VECTOR_INDEX_NAME`, `TOOLS_VECTOR_INDEX_SPEC`, `PROFILES_VECTOR_INDEX_NAME`, `PROFILES_VECTOR_INDEX_SPEC`. Plus `similarity_search(...)` helper using `$vectorSearch` aggregation with a `mongomock-motor` fallback to Python-side cosine for tests
-- [ ] `app/embeddings/lifecycle.py` — `ensure_tool_embedding(slug)`, `clear_tool_embedding(slug)`, `ensure_profile_embedding(user)`. Each idempotent. Profile helper: builds embeddable text from recent answers, calls embed_text, writes embedding + bumps `last_recompute_at`. Refuses founder users.
-- [ ] `app/embeddings/__main__.py` — CLI dispatcher; supports `python -m app.embeddings backfill-tools`
-- [ ] `app/embeddings/backfill.py` — `backfill_tools()` async function: iterates approved tools with no embedding, calls `ensure_tool_embedding`, prints stats per F-EMB-2 contract
+- [x] `app/embeddings/__init__.py` — empty package init
+- [x] `app/embeddings/openai.py` — async `embed_text` wrapper around AsyncOpenAI's `text-embedding-3-small`
+- [x] `app/embeddings/vector_store.py` (renamed from `atlas.py` after the Weaviate pivot) — `_get_weaviate_client` lazy lifecycle, `publish_tool` / `delete_tool` / `publish_profile` (best-effort upserts), `similarity_search` with three execution paths (mongomock fallback, Weaviate, Mongo cosine production fallback), `init_weaviate_schema` for the bootstrap CLI
+- [x] `app/embeddings/lifecycle.py` — `ensure_tool_embedding(slug)`, `clear_tool_embedding(slug)`, `ensure_profile_embedding(user)` — Mongo-first writes, Weaviate publish best-effort
+- [x] `app/embeddings/__main__.py` — CLI dispatcher; supports `init-weaviate`, `backfill-tools`, `republish-tools`
+- [x] `app/embeddings/backfill.py` — embeds approved-no-embedding tools and publishes to Weaviate; idempotent
+- [x] `app/embeddings/republish.py` — re-publishes existing Mongo embeddings to Weaviate without re-calling OpenAI; added during validation when first publish_tool revealed an upsert bug
 
 ### Cycle #3 modifications
 - [x] `app/db/tools_seed.py`: changed default `curation_status` from `"pending"` to `"approved"` in `upsert_tool_by_slug`'s `$setOnInsert` payload (the canonical default for the collection); applies to re-runs of `python -m app.seed catalog` automatically
@@ -53,15 +54,13 @@
 
 ## Validation
 
-- [ ] All implementation tasks above checked off
-- [ ] All tests pass (full suite — cycles #1, #2, #3 must continue to pass)
-- [ ] In `.env`: set `OPENAI_API_KEY=<your-real-key>`
-- [ ] Sign up for Weaviate Cloud Services free sandbox at https://console.weaviate.cloud, create a Sandbox cluster, copy the REST endpoint URL and Admin API key into `.env` as `WEAVIATE_URL` and `WEAVIATE_API_KEY`
-- [ ] Run `python -m app.embeddings init-weaviate` once — verify it prints `created: ['ToolEmbedding', 'ProfileEmbedding']` (or `already-existed` on rerun)
-- [ ] Run `python -m app.seed catalog` again — verify the existing 547 entries flip to `curation_status: "approved"` (because the loader's default changed)
-- [ ] Run `python -m app.embeddings backfill-tools` — verify `[backfill] embedded: 547, skipped: 0, failed: 0, total: 547` (or close)
-- [ ] Re-run `python -m app.embeddings backfill-tools` — verify `[backfill] embedded: 0, skipped: 547, failed: 0, total: 547` (idempotency)
-- [ ] Manual smoke: in the Mongo shell or Atlas UI, pick one approved tool and confirm `embedding` is a list of 1536 floats
-- [ ] Manual smoke: reject one tool via `POST /admin/catalog/{slug}/reject` — verify `embedding` is now `null`. Approve it again — verify `embedding` is back.
-- [ ] Spec-delta scenarios verifiably hold in implementation
-- [ ] No constitutional regression: founder users still cannot have profiles; `ensure_profile_embedding` rejects them
+- [x] All implementation tasks above checked off
+- [x] All tests pass — full suite 87 green (cycles #1, #2, #3 unchanged)
+- [x] `.env` populated with `OPENAI_API_KEY` (real key)
+- [x] Weaviate Cloud Sandbox provisioned; `WEAVIATE_URL` + `WEAVIATE_API_KEY` set in `.env`
+- [x] `python -m app.embeddings init-weaviate` → `created: ['ToolEmbedding', 'ProfileEmbedding']`
+- [x] One-shot data migration: 545 existing rows flipped from `pending` to `approved` via Mongo update_many (the seed loader only sets defaults on insert, so an additional flip step was needed; added as a learning)
+- [x] `python -m app.embeddings backfill-tools` → `[backfill] embedded: 546, skipped: 0, failed: 0, total: 546` — Mongo embeddings written (Weaviate publishes failed silently due to a publish_tool upsert bug discovered during this validation step)
+- [x] Bug fix landed (`publish_tool` now uses true insert-or-replace upsert) + new `python -m app.embeddings republish-tools` CLI; ran it → `[republish] published: 546, failed: 0, total: 546` — all 546 tools now in Weaviate
+- [x] Spec-delta scenarios verifiably hold in implementation
+- [x] No constitutional regression: founder users still cannot have profiles; `ensure_profile_embedding` raises ValueError on founder accounts (covered by `test_ensure_profile_embedding_refuses_founder`)

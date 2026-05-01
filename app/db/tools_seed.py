@@ -44,11 +44,13 @@ async def upsert_tool_by_slug(entry: dict[str, Any]) -> tuple[bool, bool]:
     """Insert or update a tool keyed by slug, with founder-launched
     protection.
 
-    Refuses to touch any row where `source == "founder_launch"` -- such
-    rows belong to `tools_founder_launched` (cycle #8) and only end up
-    here through a bug. Mongo `$ne` filter expresses this guard at the
-    query layer, so the operation is a no-op (returns inserted=False,
-    updated=False) on a colliding slug.
+    Refuses to touch any row where `source == "founder_launch"` --
+    such rows belong to `tools_founder_launched` (cycle #8) and only
+    end up here through a bug. Returns (False, False) silently on
+    such a collision -- caller cannot distinguish "skipped due to
+    founder_launch" from "no change", which is fine for V1; if the
+    loader needs to surface skipped slugs, the helper can return a
+    third tuple element later.
 
     Defaults applied on insert:
       - `curation_status` -> "pending" if absent
@@ -58,8 +60,18 @@ async def upsert_tool_by_slug(entry: dict[str, Any]) -> tuple[bool, bool]:
         `rejection_comment` -> None
     """
     slug = entry["slug"]
+    coll = tools_seed_collection()
 
-    # Build the $set payload (fields we always write on upsert).
+    # Founder-launched protection: check existence first. We can't
+    # express this as a single Mongo `update_one` with upsert because
+    # a non-matching filter + upsert tries to INSERT, which collides
+    # with the unique slug index when the founder row exists. The
+    # check-then-upsert pattern is two round trips but exactly one
+    # logical operation per call.
+    existing = await coll.find_one({"slug": slug})
+    if existing is not None and existing.get("source") == "founder_launch":
+        return False, False
+
     update_set = {
         "name": entry["name"],
         "tagline": entry["tagline"],
@@ -69,8 +81,6 @@ async def upsert_tool_by_slug(entry: dict[str, Any]) -> tuple[bool, bool]:
         "category": entry["category"],
         "labels": entry.get("labels", []),
     }
-
-    # And the $setOnInsert payload (fields we only set when creating).
     insert_only = {
         "slug": slug,
         "curation_status": entry.get("curation_status", "pending"),
@@ -82,13 +92,11 @@ async def upsert_tool_by_slug(entry: dict[str, Any]) -> tuple[bool, bool]:
         "rejection_comment": None,
     }
 
-    coll = tools_seed_collection()
     result = await coll.update_one(
-        {"slug": slug, "source": {"$ne": "founder_launch"}},
+        {"slug": slug},
         {"$set": update_set, "$setOnInsert": insert_only},
         upsert=True,
     )
-
     inserted = result.upserted_id is not None
     updated = (not inserted) and result.modified_count > 0
     return inserted, updated

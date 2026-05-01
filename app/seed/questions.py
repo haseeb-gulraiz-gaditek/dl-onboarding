@@ -6,7 +6,13 @@ entry into the `questions` collection by stable `key` (idempotent).
 Per F-QB-1: validate the WHOLE file before any DB writes — partial
 loads are not allowed.
 
-Run via:  python -m app.seed questions
+Public surface:
+  - load_seed_file(path)      pure file-loading + JSON parsing
+  - apply_questions_seed(...) validate-then-upsert; raises on bad input
+  - seed_questions()          CLI orchestrator (loads .env, owns mongo
+                              lifecycle); used by `python -m app.seed
+                              questions`. Tests call the inner functions
+                              directly to avoid lifecycle interference.
 """
 import asyncio
 import json
@@ -83,46 +89,44 @@ def _validate_entry(entry: dict[str, Any], idx: int) -> str | None:
     return None
 
 
-async def seed_questions() -> int:
-    """Load and apply the seed file. Returns process exit code."""
-    if not SEED_PATH.exists():
-        print(f"[seed] missing {SEED_PATH}", file=sys.stderr)
-        return 2
-
-    raw = SEED_PATH.read_text(encoding="utf-8")
+def load_seed_file(path: Path) -> list[dict[str, Any]]:
+    """Read and parse a seed JSON file. Raises ValueError on bad input."""
+    if not path.exists():
+        raise ValueError(f"seed file not found: {path}")
+    raw = path.read_text(encoding="utf-8")
     try:
         entries = json.loads(raw)
     except json.JSONDecodeError as exc:
-        print(f"[seed] {SEED_PATH} is not valid JSON: {exc}", file=sys.stderr)
-        return 2
-
+        raise ValueError(f"{path}: invalid JSON: {exc}") from exc
     if not isinstance(entries, list):
-        print("[seed] root must be a JSON array", file=sys.stderr)
-        return 2
+        raise ValueError(f"{path}: root must be a JSON array")
+    return entries
 
-    # Validate ALL entries before any DB write (per F-QB-1).
+
+async def apply_questions_seed(
+    entries: list[dict[str, Any]],
+) -> tuple[int, int, int]:
+    """Validate then upsert. Returns (inserted, updated, total).
+
+    Validation runs over the WHOLE list before any DB write, per F-QB-1.
+    Raises ValueError if any entry is invalid OR if there are duplicate
+    keys. Does NOT touch the mongo lifecycle — caller manages init/close.
+    """
     for i, entry in enumerate(entries):
         err = _validate_entry(entry, i)
         if err is not None:
-            print(f"[seed] validation failed: {err}", file=sys.stderr)
-            return 2
+            raise ValueError(err)
 
-    # Validate cross-entry constraint: keys are unique.
     keys = [e["key"] for e in entries]
     if len(keys) != len(set(keys)):
         dups = sorted({k for k in keys if keys.count(k) > 1})
-        print(f"[seed] duplicate keys in seed file: {dups}", file=sys.stderr)
-        return 2
+        raise ValueError(f"duplicate keys: {dups}")
 
-    # All valid -- proceed with DB writes.
-    load_dotenv()
-    await init_mongo()
     await ensure_question_indexes()
 
     inserted = 0
     updated = 0
     for entry in entries:
-        # Normalize options for free_text (json may have empty list or omit).
         if "options" not in entry:
             entry["options"] = []
         was_inserted, was_updated = await upsert_question_by_key(entry)
@@ -131,9 +135,28 @@ async def seed_questions() -> int:
         elif was_updated:
             updated += 1
 
-    total = len(entries)
-    print(f"[seed] inserted: {inserted}, updated: {updated}, total: {total}")
+    return inserted, updated, len(entries)
 
+
+async def seed_questions() -> int:
+    """CLI entrypoint. Returns process exit code."""
+    try:
+        entries = load_seed_file(SEED_PATH)
+    except ValueError as exc:
+        print(f"[seed] {exc}", file=sys.stderr)
+        return 2
+
+    load_dotenv()
+    await init_mongo()
+
+    try:
+        inserted, updated, total = await apply_questions_seed(entries)
+    except ValueError as exc:
+        print(f"[seed] validation failed: {exc}", file=sys.stderr)
+        await close_mongo()
+        return 2
+
+    print(f"[seed] inserted: {inserted}, updated: {updated}, total: {total}")
     await close_mongo()
     return 0
 

@@ -25,31 +25,31 @@
 - [x] Mount both routers in `app/main.py`; extended global validation handler to map missing `question_id`/`value` to `{error: "field_required", field: ...}`
 
 ### Tests (one per Given/When/Then in spec-delta)
-- [ ] F-QB-1 (seed): seed loads N questions; rerun is idempotent (same DB state, no duplicate keys)
-- [ ] F-QB-1 (seed): re-running with edited text updates the existing rows
-- [ ] F-QB-1 (seed): seed with invalid shape exits non-zero with no partial writes
-- [ ] F-QB-2: user with no profile gets first question; profile created
-- [ ] F-QB-2: user gets next-in-order question after answering one
-- [ ] F-QB-2: user who has answered all core questions gets `{done: true, question: null}`
-- [ ] F-QB-2: founder gets 403 role_mismatch
-- [ ] F-QB-2: unauthenticated gets 401 auth_required
-- [ ] F-QB-3: user submits valid `single_select` → answer stored, profile invalidated, next question returned
-- [ ] F-QB-3: user submits valid `multi_select` array → answer stored
-- [ ] F-QB-3: user submits valid `free_text` → answer stored
-- [ ] F-QB-3: invalid `question_id` → 400 question_not_found
-- [ ] F-QB-3: `single_select` with value not in options → 400 value_invalid
-- [ ] F-QB-3: `multi_select` with empty array → 400 value_invalid
-- [ ] F-QB-3: `free_text` with empty string → 400 value_invalid
-- [ ] F-QB-3: missing `question_id` → 400 field_required
-- [ ] F-QB-3: missing `value` → 400 field_required
-- [ ] F-QB-4: profile created on first GET /api/questions/next has the documented shape
-- [ ] F-QB-4: profile created on first POST /api/answers has the documented shape
-- [ ] F-QB-4: POST /api/answers updates `last_invalidated_at` to a fresh timestamp
-- [ ] F-QB-5: `get_or_create_profile` raises when called with a founder user (defense-in-depth audit test)
+- [x] F-QB-1 (seed): seed loads N questions; rerun is idempotent (same DB state, no duplicate keys)
+- [x] F-QB-1 (seed): re-running with edited text updates the existing rows
+- [x] F-QB-1 (seed): seed with invalid shape exits non-zero with no partial writes
+- [x] F-QB-2: user with no profile gets first question; profile created
+- [x] F-QB-2: user gets next-in-order question after answering one
+- [x] F-QB-2: user who has answered all core questions gets `{done: true, question: null}`
+- [x] F-QB-2: founder gets 403 role_mismatch
+- [x] F-QB-2: unauthenticated gets 401 auth_required
+- [x] F-QB-3: user submits valid `single_select` → answer stored, profile invalidated, next question returned
+- [x] F-QB-3: user submits valid `multi_select` array → answer stored
+- [x] F-QB-3: user submits valid `free_text` → answer stored
+- [x] F-QB-3: invalid `question_id` → 400 question_not_found
+- [x] F-QB-3: `single_select` with value not in options → 400 value_invalid
+- [x] F-QB-3: `multi_select` with empty array → 400 value_invalid
+- [x] F-QB-3: `free_text` with empty string → 400 value_invalid
+- [x] F-QB-3: missing `question_id` → 400 field_required
+- [x] F-QB-3: missing `value` → 400 field_required
+- [x] F-QB-4: profile created on first GET /api/questions/next has the documented shape
+- [x] F-QB-4: profile created on first POST /api/answers has the documented shape
+- [x] F-QB-4: POST /api/answers updates `last_invalidated_at` to a fresh timestamp
+- [x] F-QB-5: `get_or_create_profile` raises when called with a founder user (defense-in-depth audit test)
 
 ### Conftest updates
-- [ ] Add `seed_questions` fixture in `tests/conftest.py` that loads a small fixed test question set (3–4 questions across categories) into the mongomock DB before tests that need it
-- [ ] Add `signed_up_user_with_profile` helper that signs up a user, hits `GET /api/questions/next` once, and returns `{token, user, profile}`
+- [x] Add `seed_test_questions` fixture in `tests/conftest.py` that loads 3 questions across 3 kinds (single_select, multi_select, free_text) and 3 categories (role, stack, workflow) into the mongomock DB
+- [x] Add `signed_up_user_with_profile` helper that signs up a user, hits `GET /api/questions/next` once (which creates the profile), and returns `{token, user, first}`
 
 ## Validation
 

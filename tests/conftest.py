@@ -78,3 +78,77 @@ async def signup_founder(client: AsyncClient, email: str, password: str = "passw
 
 def auth_header(jwt_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {jwt_token}"}
+
+
+# ---- Question-bank fixtures (cycle: question-bank-and-answer-capture) ----
+
+import pytest_asyncio  # noqa: E402  -- already imported above; safe re-import
+
+
+_TEST_QUESTIONS: list[dict] = [
+    {
+        "key": "test.role_q",
+        "text": "What's your role?",
+        "kind": "single_select",
+        "category": "role",
+        "order": 1,
+        "is_core": True,
+        "active": True,
+        "version": 1,
+        "options": [
+            {"value": "designer", "label": "Designer"},
+            {"value": "engineer", "label": "Engineer"},
+        ],
+    },
+    {
+        "key": "test.stack_q",
+        "text": "Which tools do you use?",
+        "kind": "multi_select",
+        "category": "stack",
+        "order": 2,
+        "is_core": True,
+        "active": True,
+        "version": 1,
+        "options": [
+            {"value": "notion", "label": "Notion"},
+            {"value": "linear", "label": "Linear"},
+        ],
+    },
+    {
+        "key": "test.workflow_q",
+        "text": "Describe a recurring task.",
+        "kind": "free_text",
+        "category": "workflow",
+        "order": 3,
+        "is_core": True,
+        "active": True,
+        "version": 1,
+        "options": [],
+    },
+]
+
+
+@pytest_asyncio.fixture
+async def seed_test_questions(app_client):
+    """Seed a small fixed set of 3 questions across 3 kinds and 3
+    categories. Depends on app_client so the mongomock DB is already
+    initialized."""
+    from app.db.questions import questions_collection
+
+    await questions_collection().insert_many([dict(q) for q in _TEST_QUESTIONS])
+    yield _TEST_QUESTIONS
+
+
+async def signed_up_user_with_profile(client, email: str = "maya@example.com") -> dict:
+    """Sign up a user, hit GET /api/questions/next once to create the
+    profile, return {token, user, first_question_payload}."""
+    body = await signup_user(client, email)
+    r = await client.get(
+        "/api/questions/next", headers=auth_header(body["jwt"])
+    )
+    assert r.status_code == 200
+    return {
+        "token": body["jwt"],
+        "user": body["user"],
+        "first": r.json(),
+    }

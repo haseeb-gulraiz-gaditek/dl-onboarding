@@ -9,9 +9,9 @@
 - [x] Wire all three new `ensure_indexes()` calls into the FastAPI lifespan in `app/main.py` (after the existing `ensure_user_indexes`)
 
 ### Models
-- [ ] `app/models/question.py` — `Question` (DB shape), `QuestionPublic` (client shape; includes `id` as string, omits internal fields), `KindLiteral`, `CategoryLiteral`
-- [ ] `app/models/answer.py` — `AnswerCreate` (request body), `Answer` (DB shape), value-validation logic that checks `value` against `Question.kind` + `Question.options`
-- [ ] `app/models/profile.py` — `Profile` (DB shape), default-value factory for new profiles (per F-QB-4 schema)
+- [x] `app/models/question.py` — `QuestionPublic` (client shape; `id` as string), `NextQuestionResponse`, `Option`, `KindLiteral`, `CategoryLiteral`
+- [x] `app/models/answer.py` — `AnswerCreate` (request body), `validate_answer_value(question, value)` returning None or "value_invalid" — handles all three kinds (single_select, multi_select, free_text) per F-QB-3 error-path scenarios
+- [x] `app/models/profile.py` — `Profile` Pydantic shape; default-value factory lives in `app/db/profiles.py:_new_profile_doc()` to keep DB shape and Pydantic shape in sync
 
 ### Seed
 - [ ] **Research and author 10–15 core questions** in `app/seed/questions.json`. Categories must cover all six: role / stack / workflow / friction / wishlist / budget. Each question has `key`, `text`, `kind`, `options[]` (or empty for free_text), `category`, `order`, `version: 1`, `active: true`, `is_core: true`

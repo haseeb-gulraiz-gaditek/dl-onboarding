@@ -3,9 +3,9 @@
 ## Implementation Checklist
 
 ### Schema + DB
-- [ ] Define `app/db/tools_seed.py` collection access layer + `ensure_indexes()` (unique index on `slug`; compound `(curation_status, category)`)
-- [ ] Helpers: `upsert_tool_by_slug` (refuses to overwrite rows with `source="founder_launch"`), `find_tool_by_slug`, `list_tools_by_status`, `set_status` (handles approve/reject + reviewer metadata)
-- [ ] Wire `ensure_indexes` into the FastAPI lifespan in `app/main.py`
+- [x] Define `app/db/tools_seed.py` collection access layer + `ensure_indexes()` (unique index on `slug`; compound `(curation_status, category)`)
+- [x] Helpers: `upsert_tool_by_slug` (refuses to overwrite rows with `source="founder_launch"` via Mongo `$ne` filter), `find_tool_by_slug`, `list_tools_by_status`, `set_status` (handles approve/reject + reviewer metadata)
+- [x] Wire `ensure_indexes` into the FastAPI lifespan in `app/main.py`
 
 ### Models
 - [ ] `app/models/tool.py` — `Category` and `Label` literal types matching the prompt's enums; `Tool` (DB shape), `ToolPublic` (client shape with `id` as string), `ToolReject` (request body for reject endpoint), `to_public(doc)` helper

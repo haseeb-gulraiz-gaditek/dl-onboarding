@@ -20,6 +20,7 @@ from app.db.answers import ensure_indexes as ensure_answer_indexes
 from app.db.mongo import close_mongo, init_mongo
 from app.db.profiles import ensure_indexes as ensure_profile_indexes
 from app.db.questions import ensure_indexes as ensure_question_indexes
+from app.db.tools_seed import ensure_indexes as ensure_tools_seed_indexes
 from app.db.users import ensure_indexes as ensure_user_indexes
 
 
@@ -48,6 +49,7 @@ async def lifespan(app: FastAPI):
     await ensure_question_indexes()
     await ensure_answer_indexes()
     await ensure_profile_indexes()
+    await ensure_tools_seed_indexes()
     try:
         yield
     finally:

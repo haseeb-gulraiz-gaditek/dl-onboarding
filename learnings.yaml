@@ -125,3 +125,55 @@ learnings:
       pattern: when a feature wants to extend a constitutional enum,
       ask whether an orthogonal check would suffice for V1.
     category: process
+  - date: 2026-05-02
+    cycle: "weaviate-pipeline"
+    insight: |
+      Mid-cycle pivots are OK while a cycle is still in implementation. User
+      changed the vector store from Atlas Vector Search to Weaviate Cloud
+      after the impl was nominally done but before /sdd:complete had run.
+      Spec-delta + proposal were edited in place rather than via /vkf/amend
+      because the cycle was still active. Rule: if the cycle is still in
+      `current_cycle` state, edit the spec-delta directly; once it's been
+      merged into specs/features/, future changes go through /vkf/amend.
+    category: process
+  - date: 2026-05-02
+    cycle: "weaviate-pipeline"
+    insight: |
+      Changing a `$setOnInsert` default does NOT migrate existing rows.
+      Cycle #4 changed the seed loader's curation_status default from
+      "pending" to "approved". Re-running the seed reported `updated: 0`
+      because Mongo's `$setOnInsert` only fires when a row is being
+      created. Existing rows kept their old default. Future cycles that
+      change a default should include an explicit one-shot data migration
+      step in tasks.md (e.g., `db.tools_seed.updateMany({field: "old"},
+      {$set: {field: "new"}})`). Schema reservation patterns assume
+      forward writes; defaults that need backfilling are a different beast.
+    category: technical
+  - date: 2026-05-02
+    cycle: "weaviate-pipeline"
+    insight: |
+      Weaviate v4's `data.replace()` is NOT an upsert -- it requires the
+      object to already exist or returns 500. `data.insert()` is also
+      not an upsert -- it requires the object to NOT exist. Neither is
+      upsert on its own. The only way to upsert by deterministic UUID is
+      try-insert / except-replace. Discovered when the first publish_tool
+      call after backfill silently 500'd on every tool (best-effort
+      publishes don't surface as failures). Fix: an `_upsert` helper that
+      tries insert first, falls back to replace. Lesson: when wrapping a
+      third-party client in a "publish" abstraction, exercise the API
+      end-to-end against real infra at least once before declaring the
+      cycle done -- not just unit tests with mocks.
+    category: technical
+  - date: 2026-05-02
+    cycle: "weaviate-pipeline"
+    insight: |
+      Best-effort writes need a recovery surface. `publish_tool` is wrapped
+      in try/except so failures don't block the calling request -- right
+      design for graceful degradation. But when 546 publishes silently
+      failed during the original backfill, there was no clean recovery
+      path -- the Mongo embeddings were fine, only Weaviate was empty.
+      Added `python -m app.embeddings republish-tools` as the explicit
+      "push existing Mongo embeddings to Weaviate" command. Pattern: every
+      best-effort write to an external system should have a corresponding
+      "re-publish from source-of-truth" CLI for recovery.
+    category: technical

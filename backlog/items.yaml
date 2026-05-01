@@ -115,10 +115,11 @@ items:
   - id: 4
     summary: "weaviate-pipeline"
     priority: high
-    status: in_progress
+    status: done
     added: 2026-04-27
     promoted_to_cycle: "weaviate-pipeline"
     promoted_at: "2026-05-01"
+    completed_at: "2026-05-02"
     notes: |
       Weaviate as a separate service (not co-located in Mongo).
 

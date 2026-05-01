@@ -14,7 +14,10 @@ from fastapi.responses import JSONResponse
 
 from app.api import auth as auth_router
 from app.api import me as me_router
+from app.db.answers import ensure_indexes as ensure_answer_indexes
 from app.db.mongo import close_mongo, init_mongo
+from app.db.profiles import ensure_indexes as ensure_profile_indexes
+from app.db.questions import ensure_indexes as ensure_question_indexes
 from app.db.users import ensure_indexes as ensure_user_indexes
 
 
@@ -40,6 +43,9 @@ async def lifespan(app: FastAPI):
         )
     await init_mongo()
     await ensure_user_indexes()
+    await ensure_question_indexes()
+    await ensure_answer_indexes()
+    await ensure_profile_indexes()
     try:
         yield
     finally:

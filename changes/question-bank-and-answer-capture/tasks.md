@@ -3,10 +3,10 @@
 ## Implementation Checklist
 
 ### Schema + DB
-- [ ] Define `app/db/questions.py` collection access layer + `ensure_indexes()` (unique index on `questions.key`, compound `(active, order)`)
-- [ ] Define `app/db/answers.py` collection access layer + `ensure_indexes()` (compound `(user_id, question_id)` for next-question lookup)
-- [ ] Define `app/db/profiles.py` collection access layer + `ensure_indexes()` (unique index on `profiles.user_id`); includes `get_or_create_profile(user_id, role_type)` helper that REJECTS founders (raises ValueError)
-- [ ] Wire all three new `ensure_indexes()` calls into the FastAPI lifespan in `app/main.py` (after the existing `ensure_user_indexes`)
+- [x] Define `app/db/questions.py` collection access layer + `ensure_indexes()` (unique index on `questions.key`, compound `(is_core, active, order)`)
+- [x] Define `app/db/answers.py` collection access layer + `ensure_indexes()` (single index on `user_id` for the answered-set lookup)
+- [x] Define `app/db/profiles.py` collection access layer + `ensure_indexes()` (unique index on `profiles.user_id`); includes `get_or_create_profile(user)` helper that REJECTS founders (raises ValueError)
+- [x] Wire all three new `ensure_indexes()` calls into the FastAPI lifespan in `app/main.py` (after the existing `ensure_user_indexes`)
 
 ### Models
 - [ ] `app/models/question.py` — `Question` (DB shape), `QuestionPublic` (client shape; includes `id` as string, omits internal fields), `KindLiteral`, `CategoryLiteral`

@@ -27,27 +27,29 @@
 - [x] `app/api/admin_catalog.py` reject handler: after `set_status(...)`, calls `clear_tool_embedding(slug)` per F-EMB-6, then re-fetches so the response shows `embedding: null`
 
 ### Tests
-- [ ] F-EMB-1 (env): missing `OPENAI_API_KEY` → app refuses to boot (exercise the lifespan check, mirror existing tests for the other required vars)
-- [ ] F-EMB-2 (lifecycle): `ensure_tool_embedding` populates `embedding` on a tool with no embedding (mock OpenAI client to return a fixed 1536-dim vector)
-- [ ] F-EMB-2 (lifecycle): `ensure_tool_embedding` is a no-op on a tool that already has an embedding (idempotent)
-- [ ] F-EMB-2 (admin): approve handler triggers `ensure_tool_embedding` and the response shows the populated embedding
-- [ ] F-EMB-2 (admin): if OpenAI returns an error during approve, the tool is still approved with `embedding=None`; admin response is 200
-- [ ] F-EMB-2 (backfill): backfill embeds all approved-no-embedding tools; prints stats; rerun is a no-op
-- [ ] F-EMB-2 (backfill): backfill skips rejected and pending tools (only approved get embedded)
-- [ ] F-EMB-3 (profile): `ensure_profile_embedding` populates a fresh profile's embedding
-- [ ] F-EMB-3 (profile): no-op on a fresh embedding (`last_recompute_at >= last_invalidated_at` AND `embedding IS NOT null`)
-- [ ] F-EMB-3 (profile): regenerates when `last_invalidated_at` is newer than `last_recompute_at`
-- [ ] F-EMB-3 (profile): refuses founder user with `ValueError`
-- [ ] F-EMB-5 (search): `similarity_search` returns top_k docs in cosine-descending order against an in-memory mongomock dataset (uses Python-side cosine fallback)
-- [ ] F-EMB-5 (search): filters narrow the result set
-- [ ] F-EMB-5 (search): empty collection returns empty list (no error)
-- [ ] F-EMB-6 (reject): reject handler clears `embedding` on the rejected tool
-- [ ] F-EMB-6 (reject): re-approving a previously-rejected tool re-embeds it
-- [ ] F-CAT-3 modified: seed loader inserts new entries with `curation_status: "approved"` by default (verify by re-loading the catalog and checking a fresh slug's status)
+- [x] F-EMB-1 (env): missing required env var → app refuses to boot (parametrized over MONGODB_URI / JWT_SECRET / ADMIN_EMAILS / OPENAI_API_KEY)
+- [x] F-EMB-2 (lifecycle): `ensure_tool_embedding` populates `embedding` on a tool with no embedding
+- [x] F-EMB-2 (lifecycle): `ensure_tool_embedding` is a no-op on a tool that already has an embedding (idempotent)
+- [x] F-EMB-2 (lifecycle): `ensure_tool_embedding` is a no-op on missing slug
+- [x] F-EMB-2 (admin): approve handler triggers `ensure_tool_embedding` and the response shows the populated embedding
+- [x] F-EMB-2 (admin): if OpenAI returns an error during approve, the tool is still approved with `embedding=None`
+- [x] F-EMB-2 (backfill): backfill embeds approved-no-embedding tools; idempotent rerun
+- [x] F-EMB-2 (backfill): backfill skips rejected and pending tools
+- [x] F-EMB-2 (backfill): records failures without aborting the run
+- [x] F-EMB-3 (profile): `ensure_profile_embedding` populates a fresh profile's embedding
+- [x] F-EMB-3 (profile): no-op on a fresh embedding
+- [x] F-EMB-3 (profile): regenerates when `last_invalidated_at` is newer than `last_recompute_at`
+- [x] F-EMB-3 (profile): refuses founder user with `ValueError`
+- [x] F-EMB-5 (search): `similarity_search` returns top_k docs in cosine-descending order via the mongomock fallback path
+- [x] F-EMB-5 (search): filters narrow the result set
+- [x] F-EMB-5 (search): empty collection returns empty list
+- [x] F-EMB-6 (reject): reject handler clears `embedding` on the rejected tool
+- [x] F-EMB-6 (reject): re-approving a previously-rejected tool re-embeds it
+- [x] F-CAT-3 modified: seed loader inserts new entries with `curation_status: "approved"` by default (verified by `test_loader_inserts_entries_and_is_idempotent`)
 
 ### Conftest updates
-- [ ] Set `OPENAI_API_KEY=test-fake-key` in `tests/conftest.py` env setup
-- [ ] Add `mock_openai_embed` fixture that monkey-patches `app.embeddings.openai.embed_text` to return a deterministic 1536-dim vector based on the input string's hash. Used by all embedding tests.
+- [x] Set `OPENAI_API_KEY=test-fake-key-not-real` in `tests/conftest.py` env setup
+- [x] Add `mock_openai_embed` autouse fixture monkey-patching both `app.embeddings.openai.embed_text` and `app.embeddings.lifecycle.embed_text` with a deterministic MD5-based 1536-dim stub. Tests that need a failing-OpenAI override locally with `monkeypatch.setattr`.
 
 ## Validation
 

@@ -17,26 +17,27 @@
 - [x] Mount router in `app/main.py`
 
 ### Tests
-- [ ] F-MATCH-1: unauthenticated request returns 401 auth_required
-- [ ] F-MATCH-1: founder request returns 403 role_mismatch
-- [ ] F-MATCH-2: 0 answers → generic mode in response
-- [ ] F-MATCH-2: 2 answers → generic mode in response
-- [ ] F-MATCH-2: exactly 3 answers → embedding mode in response
-- [ ] F-MATCH-2: 5 answers → embedding mode in response
-- [ ] F-MATCH-3: role answered → tools belong to mapped categories
-- [ ] F-MATCH-3: role NOT answered → falls back to catalog-wide all_time_best
-- [ ] F-MATCH-3: when role-bucket query returns <5, falls through to catalog-wide all_time_best
-- [ ] F-MATCH-3: returns alphabetical by name
-- [ ] F-MATCH-4: ensure_profile_embedding is called when entering embedding mode
-- [ ] F-MATCH-4: similarity_search results returned in cosine order
-- [ ] F-MATCH-4: when similarity returns 0 docs, response is `tools: []`, mode: "embedding"
-- [ ] F-MATCH-4: when ensure_profile_embedding raises (OpenAI down), endpoint falls back to generic mode and response.mode == "generic"
-- [ ] F-MATCH-5: response shape matches MatchResponse contract (mode + tools list of OnboardingToolCard)
-- [ ] F-MATCH-6: ROLE_TO_CATEGORIES has every role.primary_function seed value as a key (audit test against the seed JSON)
+- [x] F-MATCH-1: unauthenticated request returns 401 auth_required
+- [x] F-MATCH-1: founder request returns 403 role_mismatch
+- [x] F-MATCH-2: 0 answers → generic mode in response
+- [x] F-MATCH-2: 2 answers → generic mode in response
+- [x] F-MATCH-2: exactly 3 answers → embedding mode in response
+- [x] F-MATCH-2: 5 answers → embedding mode in response
+- [x] F-MATCH-3: role answered (`marketing_ops`) → 5 tools all from `marketing` category
+- [x] F-MATCH-3: role NOT answered → falls back to catalog-wide alphabetical top-5
+- [x] F-MATCH-3: role-bucket has <5 (`design`) → falls back to catalog-wide
+- [x] F-MATCH-3: returns alphabetical by name (verified via `slugs == sorted(slugs)`)
+- [x] F-MATCH-4: ensure_profile_embedding populates the profile embedding on embedding-mode entry
+- [x] F-MATCH-4: when similarity returns 0 docs, response is `tools: []`, mode: "embedding"
+- [x] F-MATCH-4: when ensure_profile_embedding raises (OpenAI down), endpoint falls back to generic mode and `response.mode == "generic"`
+- [x] F-MATCH-5: response shape matches MatchResponse contract (mode + tools list of OnboardingToolCard)
+- [x] F-MATCH-6: ROLE_TO_CATEGORIES audit against `app/seed/questions.json` — every option value of `role.primary_function` is a key in the map and vice versa
 
 ### Conftest updates
-- [ ] Add `signed_up_user_with_n_answers(client, email, n)` helper in `tests/conftest.py` that signs up a user, walks `/api/questions/next` and `/api/answers` n times answering with deterministic values
-- [ ] Add `seed_minimal_catalog` fixture that inserts ~6 tools spanning 3 categories with `all_time_best` labels and approved status — small enough to make assertions tight
+- [x] `insert_dummy_answers(user_id, count)` helper inserts N answers with arbitrary fresh question_ids — used by mode-dispatch tests
+- [x] `insert_role_answer(user_id, role_value)` helper for F-MATCH-3 role-bucket tests
+- [x] `seed_minimal_catalog` fixture inserts 8 approved all_time_best tools across `marketing` (5), `design` (2), `productivity` (1) — exercises both "bucket no fallback" and "bucket forces fallback" paths
+- [x] `seed_role_question` fixture inserts the production-named `role.primary_function` question with production-named option values
 
 ## Validation
 

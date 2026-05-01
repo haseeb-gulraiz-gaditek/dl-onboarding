@@ -22,9 +22,9 @@
 - [ ] `app/embeddings/backfill.py` — `backfill_tools()` async function: iterates approved tools with no embedding, calls `ensure_tool_embedding`, prints stats per F-EMB-2 contract
 
 ### Cycle #3 modifications
-- [ ] `app/seed/catalog.py`: change default `curation_status` from `"pending"` to `"approved"` in `apply_catalog_seed`'s upsert payload; this also affects re-runs of `python -m app.seed catalog`
-- [ ] `app/api/admin_catalog.py` approve handler: after `set_status(...)`, call `ensure_tool_embedding(slug)`. If embedding fails, log and continue (graceful degradation per F-EMB-2)
-- [ ] `app/api/admin_catalog.py` reject handler: after `set_status(...)`, call `clear_tool_embedding(slug)` per F-EMB-6
+- [x] `app/db/tools_seed.py`: changed default `curation_status` from `"pending"` to `"approved"` in `upsert_tool_by_slug`'s `$setOnInsert` payload (the canonical default for the collection); applies to re-runs of `python -m app.seed catalog` automatically
+- [x] `app/api/admin_catalog.py` approve handler: after `set_status(...)`, calls `ensure_tool_embedding(slug)` synchronously then re-fetches to include the embedding in the response. Embedding failures don't roll back the approve (graceful degradation per F-EMB-2)
+- [x] `app/api/admin_catalog.py` reject handler: after `set_status(...)`, calls `clear_tool_embedding(slug)` per F-EMB-6, then re-fetches so the response shows `embedding: null`
 
 ### Tests
 - [ ] F-EMB-1 (env): missing `OPENAI_API_KEY` → app refuses to boot (exercise the lifespan check, mirror existing tests for the other required vars)

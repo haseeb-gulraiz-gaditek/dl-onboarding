@@ -88,3 +88,40 @@ learnings:
       migrations. Mongo makes this almost free; do it for every mutable
       document a future cycle will touch.
     category: technical
+  - date: 2026-05-01
+    cycle: "catalog-seed-and-curation"
+    insight: |
+      Outsourcing data generation to a separate agent (via a self-contained
+      prompt file) was the right call. I generate code well; I hallucinate URLs
+      and pricing. The pattern: write a prompt file as a permanent repo artifact,
+      user runs it through a different agent, paste output back as a JSON file,
+      validate-then-load. Reusable for any cycle whose deliverable is data the
+      user wouldn't want me to make up. Catalog refreshes are now just
+      "re-run the prompt and diff the JSON." Apply this pattern to any future
+      "seed N items of type X" work.
+    category: process
+  - date: 2026-05-01
+    cycle: "catalog-seed-and-curation"
+    insight: |
+      Mongo upsert with a filter that intentionally excludes the existing row
+      does NOT silently no-op -- it tries to INSERT, which then collides with
+      whatever unique index covers the slug/key. The "natural" defense-in-depth
+      filter (`{slug, source != "founder_launch"}` with `upsert=True`) raises
+      DuplicateKeyError instead of skipping. Fix: do an explicit find_one first,
+      bail early if the row is protected, then upsert without that filter.
+      Two round trips, but the contract matches the docstring. Caught only
+      because the audit test set up the exact "founder row already there"
+      condition we were defending against.
+    category: technical
+  - date: 2026-05-01
+    cycle: "catalog-seed-and-curation"
+    insight: |
+      `ADMIN_EMAILS` env-var allowlist was the right V1 punt. The original
+      system_design wanted an `admin` role added to the constitutional
+      `user|founder` enum -- which would have been a C2 amendment of F-AUTH-4
+      ("role_type is non-transferable"). Instead: the admin gate is an
+      orthogonal check (email-in-list), not a third role. The constitution
+      stays intact, V1 ships, V1.5+ replaces this with proper RBAC. General
+      pattern: when a feature wants to extend a constitutional enum,
+      ask whether an orthogonal check would suffice for V1.
+    category: process

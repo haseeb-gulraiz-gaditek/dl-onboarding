@@ -81,10 +81,11 @@ items:
   - id: 3
     summary: "catalog-seed-and-curation"
     priority: high
-    status: in_progress
+    status: done
     added: 2026-04-27
     promoted_to_cycle: "catalog-seed-and-curation"
     promoted_at: "2026-05-01"
+    completed_at: "2026-05-01"
     notes: |
       Decision: NO Celery scrape job in V1 (changed from earlier
       system_design draft). Instead: Claude does deep research during

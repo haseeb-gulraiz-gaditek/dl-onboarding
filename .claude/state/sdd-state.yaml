@@ -8,12 +8,12 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: catalog-seed-and-curation
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-01T22:30:00+05:00"
-  tracker_ref: "backlog:3"
-  base_branch: main
-  branch_name: catalog-seed-and-curation
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
   - slug: auth-role-split
     completed: "2026-04-30"
@@ -21,3 +21,6 @@ history:
   - slug: question-bank-and-answer-capture
     completed: "2026-05-01"
     summary: "questions/answers/profiles collections + GET /api/questions/next + POST /api/answers behind require_role(user). 12 hand-authored seed questions across 6 categories. Lazy profile creation; founders structurally barred. 21 tests."
+  - slug: catalog-seed-and-curation
+    completed: "2026-05-01"
+    summary: "tools_seed collection + 547-entry catalog from outsourced research agent. python -m app.seed catalog idempotent loader with founder-launched protection. Admin curation UI (list, approve, reject-with-comment) behind ADMIN_EMAILS env allowlist (no role_type amendment). 22 tests."

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.admin import require_admin
 from app.db.tools_seed import find_tool_by_slug, list_tools_by_status, set_status
+from app.embeddings.lifecycle import clear_tool_embedding, ensure_tool_embedding
 from app.models.tool import CurationStatus, ToolPublic, ToolReject, to_public
 
 
@@ -60,9 +61,13 @@ async def approve_catalog_entry(
     slug: str,
     admin: dict[str, Any] = Depends(require_admin()),
 ) -> ToolPublic:
-    """F-CAT-5: set curation_status=approved + reviewer metadata.
+    """F-CAT-5 + F-EMB-2: set curation_status=approved + reviewer
+    metadata, clear prior rejection_comment, and synchronously ensure
+    the tool's embedding exists.
 
-    Clears any prior rejection_comment.
+    On embedding-step failure (OpenAI unreachable, etc.), the approve
+    still succeeds; the next backfill run picks up the missing
+    embedding (graceful degradation).
     """
     updated = await set_status(
         slug=slug,
@@ -75,6 +80,20 @@ async def approve_catalog_entry(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "tool_not_found"},
         )
+
+    # Ensure embedding -- best-effort, never blocks the approve.
+    try:
+        await ensure_tool_embedding(slug)
+        # Re-fetch to include the (possibly new) embedding in the
+        # response payload.
+        from app.db.tools_seed import find_tool_by_slug as _refetch
+
+        refreshed = await _refetch(slug)
+        if refreshed is not None:
+            updated = refreshed
+    except Exception as exc:
+        print(f"[admin_catalog] embed-on-approve failed for {slug}: {exc}")
+
     return to_public(updated)
 
 
@@ -107,4 +126,13 @@ async def reject_catalog_entry(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": "tool_not_found"},
         )
+
+    # F-EMB-6: rejected tools must disappear from similarity search.
+    # Clearing the embedding is sufficient (Atlas Vector Search ignores
+    # docs whose vector field is null; the cosine fallback also skips).
+    await clear_tool_embedding(slug)
+    refreshed = await find_tool_by_slug(slug)
+    if refreshed is not None:
+        updated = refreshed
+
     return to_public(updated)

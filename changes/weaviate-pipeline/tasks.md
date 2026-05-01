@@ -56,7 +56,8 @@
 - [ ] All implementation tasks above checked off
 - [ ] All tests pass (full suite — cycles #1, #2, #3 must continue to pass)
 - [ ] In `.env`: set `OPENAI_API_KEY=<your-real-key>`
-- [ ] Create the two Atlas Vector Search indices via the Atlas UI per the specs in `app/embeddings/atlas.py` (one-time)
+- [ ] Sign up for Weaviate Cloud Services free sandbox at https://console.weaviate.cloud, create a Sandbox cluster, copy the REST endpoint URL and Admin API key into `.env` as `WEAVIATE_URL` and `WEAVIATE_API_KEY`
+- [ ] Run `python -m app.embeddings init-weaviate` once — verify it prints `created: ['ToolEmbedding', 'ProfileEmbedding']` (or `already-existed` on rerun)
 - [ ] Run `python -m app.seed catalog` again — verify the existing 547 entries flip to `curation_status: "approved"` (because the loader's default changed)
 - [ ] Run `python -m app.embeddings backfill-tools` — verify `[backfill] embedded: 547, skipped: 0, failed: 0, total: 547` (or close)
 - [ ] Re-run `python -m app.embeddings backfill-tools` — verify `[backfill] embedded: 0, skipped: 547, failed: 0, total: 547` (idempotency)

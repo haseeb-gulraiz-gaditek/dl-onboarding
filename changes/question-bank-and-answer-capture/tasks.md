@@ -14,10 +14,10 @@
 - [x] `app/models/profile.py` — `Profile` Pydantic shape; default-value factory lives in `app/db/profiles.py:_new_profile_doc()` to keep DB shape and Pydantic shape in sync
 
 ### Seed
-- [ ] **Research and author 10–15 core questions** in `app/seed/questions.json`. Categories must cover all six: role / stack / workflow / friction / wishlist / budget. Each question has `key`, `text`, `kind`, `options[]` (or empty for free_text), `category`, `order`, `version: 1`, `active: true`, `is_core: true`
-- [ ] `app/seed/__init__.py` — module init
-- [ ] `app/seed/__main__.py` — CLI dispatcher; supports `python -m app.seed questions`
-- [ ] `app/seed/questions.py` — loader function: validate the whole JSON file first, then upsert by `key`, print `inserted/updated/total`. Exit non-zero on validation failure with no partial writes.
+- [x] **Research and author 10–15 core questions** in `app/seed/questions.json`. Categories must cover all six: role / stack / workflow / friction / wishlist / budget. Each question has `key`, `text`, `kind`, `options[]` (or empty for free_text), `category`, `order`, `version: 1`, `active: true`, `is_core: true` — **shipped 12 questions** (1 role, 2 stack, 3 workflow, 3 friction, 2 wishlist, 1 budget)
+- [x] `app/seed/__init__.py` — module init
+- [x] `app/seed/__main__.py` — CLI dispatcher; supports `python -m app.seed questions`
+- [x] `app/seed/questions.py` — loader function: validate the whole JSON file first, then upsert by `key`, print `inserted/updated/total`. Exit non-zero on validation failure with no partial writes.
 
 ### Endpoints
 - [ ] `app/api/questions.py` — `GET /api/questions/next` behind `Depends(require_role("user"))`; calls `get_or_create_profile`, finds next unanswered core question by `order`, returns `{done, question}` (F-QB-2)

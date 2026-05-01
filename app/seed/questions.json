@@ -1,0 +1,188 @@
+[
+  {
+    "key": "role.primary_function",
+    "text": "What's your primary job function right now?",
+    "kind": "single_select",
+    "category": "role",
+    "order": 1,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": [
+      { "value": "marketing_ops", "label": "Marketing / growth ops" },
+      { "value": "product_management", "label": "Product management" },
+      { "value": "design", "label": "Design (product, UX, visual)" },
+      { "value": "content", "label": "Content / writing / editorial" },
+      { "value": "engineering", "label": "Engineering / development" },
+      { "value": "operations", "label": "General operations / business ops" },
+      { "value": "customer_success", "label": "Customer success / support" },
+      { "value": "sales", "label": "Sales" },
+      { "value": "founder_non_ai", "label": "Founder of a non-AI product" },
+      { "value": "freelance_consulting", "label": "Freelance / consulting" },
+      { "value": "student_research", "label": "Student / researcher" },
+      { "value": "other", "label": "Something else" }
+    ]
+  },
+  {
+    "key": "stack.workspace_tools",
+    "text": "Which of these do you use most days at work?",
+    "kind": "multi_select",
+    "category": "stack",
+    "order": 2,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": [
+      { "value": "notion", "label": "Notion" },
+      { "value": "linear", "label": "Linear" },
+      { "value": "jira", "label": "Jira" },
+      { "value": "asana", "label": "Asana" },
+      { "value": "slack", "label": "Slack" },
+      { "value": "discord", "label": "Discord" },
+      { "value": "gmail_or_workspace", "label": "Gmail / Google Workspace" },
+      { "value": "microsoft_365", "label": "Microsoft 365" },
+      { "value": "airtable", "label": "Airtable" },
+      { "value": "figma", "label": "Figma" },
+      { "value": "github", "label": "GitHub" },
+      { "value": "vscode_cursor", "label": "VS Code / Cursor" },
+      { "value": "none_of_these", "label": "None of these" }
+    ]
+  },
+  {
+    "key": "stack.ai_tools_currently_using",
+    "text": "Which AI tools are you actively using right now?",
+    "kind": "multi_select",
+    "category": "stack",
+    "order": 3,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": [
+      { "value": "chatgpt", "label": "ChatGPT" },
+      { "value": "claude", "label": "Claude" },
+      { "value": "perplexity", "label": "Perplexity" },
+      { "value": "gemini", "label": "Gemini" },
+      { "value": "cursor", "label": "Cursor" },
+      { "value": "github_copilot", "label": "GitHub Copilot" },
+      { "value": "v0_lovable", "label": "v0 / Lovable / Bolt" },
+      { "value": "midjourney", "label": "Midjourney" },
+      { "value": "dalle_or_image_gen", "label": "DALL-E / image generators" },
+      { "value": "elevenlabs", "label": "ElevenLabs / voice tools" },
+      { "value": "granola_or_otter", "label": "Granola / Otter / meeting AI" },
+      { "value": "runway_or_video", "label": "Runway / video AI" },
+      { "value": "none_yet", "label": "None yet — that's why I'm here" },
+      { "value": "other", "label": "Other" }
+    ]
+  },
+  {
+    "key": "workflow.weekly_repeated_task",
+    "text": "What's a task you do every week that takes more time than it should?",
+    "kind": "free_text",
+    "category": "workflow",
+    "order": 4,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": []
+  },
+  {
+    "key": "workflow.copy_paste_pattern",
+    "text": "Where do you most often copy or re-type data between tools?",
+    "kind": "free_text",
+    "category": "workflow",
+    "order": 5,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": []
+  },
+  {
+    "key": "workflow.first_morning_thing",
+    "text": "What's the first work-related thing you do most mornings?",
+    "kind": "free_text",
+    "category": "workflow",
+    "order": 6,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": []
+  },
+  {
+    "key": "friction.tool_abandoned",
+    "text": "Pick one AI or productivity tool you tried in the last 6 months and stopped using. Why did you bounce?",
+    "kind": "free_text",
+    "category": "friction",
+    "order": 7,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": []
+  },
+  {
+    "key": "friction.biggest_time_sink",
+    "text": "What's the biggest time-sink in your work right now that no tool seems to solve well?",
+    "kind": "free_text",
+    "category": "friction",
+    "order": 8,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": []
+  },
+  {
+    "key": "friction.fomo_pressure",
+    "text": "When you see new AI tools launching every week, which feels truest?",
+    "kind": "single_select",
+    "category": "friction",
+    "order": 9,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": [
+      { "value": "excited_overwhelmed", "label": "Excited, but overwhelmed by the choice" },
+      { "value": "skeptical_hype", "label": "Skeptical — most of the hype doesn't pan out" },
+      { "value": "stack_works", "label": "My current stack works; I'm not actively looking" },
+      { "value": "actively_hunting", "label": "Actively hunting for things that genuinely save time" },
+      { "value": "indifferent", "label": "Honestly, I don't think about it much" }
+    ]
+  },
+  {
+    "key": "wishlist.would_pay_for",
+    "text": "Complete this sentence: \"I would happily pay for a tool that ______.\"",
+    "kind": "free_text",
+    "category": "wishlist",
+    "order": 10,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": []
+  },
+  {
+    "key": "wishlist.dream_automation",
+    "text": "If a magic wand could automate ONE thing in your work this week, what would it be?",
+    "kind": "free_text",
+    "category": "wishlist",
+    "order": 11,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": []
+  },
+  {
+    "key": "budget.monthly_personal_ai_spend",
+    "text": "Roughly how much do you spend on AI tools per month, just for yourself?",
+    "kind": "single_select",
+    "category": "budget",
+    "order": 12,
+    "is_core": true,
+    "active": true,
+    "version": 1,
+    "options": [
+      { "value": "none", "label": "$0 — only free tiers" },
+      { "value": "indie", "label": "$1 - $50" },
+      { "value": "sub_100_mo", "label": "$50 - $100" },
+      { "value": "sub_1k_mo", "label": "$100 - $1,000" },
+      { "value": "enterprise", "label": "More than $1,000" }
+    ]
+  }
+]

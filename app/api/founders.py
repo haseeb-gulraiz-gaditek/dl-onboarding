@@ -10,6 +10,7 @@ from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.auth.middleware import require_role
+from app.db.communities import find_by_slug as find_community_by_slug
 from app.db.launches import find_by_id, find_for_founder, insert
 from app.models.launch import (
     LaunchListResponse,
@@ -76,12 +77,36 @@ async def submit_launch(
             )
         cleaned_links.append(link)
 
+    # F-LAUNCH-1 (modified by F-PUB cycle): validate target_community_slugs.
+    target_slugs = list(payload.target_community_slugs)
+    if len(set(target_slugs)) != len(target_slugs):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "field_invalid",
+                "field": "target_community_slugs",
+                "reason": "duplicates",
+            },
+        )
+    for slug in target_slugs:
+        c = await find_community_by_slug(slug)
+        if c is None or not c.get("is_active", True):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": "community_not_found",
+                    "field": "target_community_slugs",
+                    "slug": slug,
+                },
+            )
+
     doc = await insert(
         founder_user_id=user["_id"],
         product_url=product_url,
         problem_statement=problem,
         icp_description=icp,
         existing_presence_links=cleaned_links,
+        target_community_slugs=target_slugs,
     )
     return to_launch_response(doc)
 

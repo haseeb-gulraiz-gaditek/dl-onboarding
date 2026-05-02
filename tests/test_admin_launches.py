@@ -16,7 +16,7 @@ from tests.conftest import (
 
 
 @pytest.mark.asyncio
-async def test_admin_queue_defaults_to_pending(app_client, admin_token):
+async def test_admin_queue_defaults_to_pending(app_client, seed_test_communities, admin_token):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     await submit_test_launch(app_client, f["token"])
 
@@ -31,7 +31,7 @@ async def test_admin_queue_defaults_to_pending(app_client, admin_token):
 
 
 @pytest.mark.asyncio
-async def test_admin_queue_status_filter(app_client, admin_token):
+async def test_admin_queue_status_filter(app_client, seed_test_communities, admin_token):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     await submit_test_launch(app_client, f["token"])
 
@@ -44,7 +44,7 @@ async def test_admin_queue_status_filter(app_client, admin_token):
 
 
 @pytest.mark.asyncio
-async def test_admin_detail_includes_founder_email(app_client, admin_token):
+async def test_admin_detail_includes_founder_email(app_client, seed_test_communities, admin_token):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res = await submit_test_launch(app_client, f["token"])
     launch_id = res["body"]["id"]
@@ -60,7 +60,7 @@ async def test_admin_detail_includes_founder_email(app_client, admin_token):
 
 
 @pytest.mark.asyncio
-async def test_non_admin_cannot_access_queue(app_client):
+async def test_non_admin_cannot_access_queue(app_client, seed_test_communities):
     body = await signup_user(app_client, "maya@example.com")
     r = await app_client.get(
         "/admin/launches", headers=auth_header(body["jwt"])
@@ -74,7 +74,7 @@ async def test_non_admin_cannot_access_queue(app_client):
 
 
 @pytest.mark.asyncio
-async def test_approve_creates_founder_launched_tool(app_client, admin_token):
+async def test_approve_creates_founder_launched_tool(app_client, seed_test_communities, admin_token):
     """F-LAUNCH-4: approve creates tools_founder_launched row with the
     derived slug, is_founder_launched=True, launched_via_id."""
     from app.db.tools_founder_launched import find_by_slug
@@ -103,7 +103,7 @@ async def test_approve_creates_founder_launched_tool(app_client, admin_token):
 
 
 @pytest.mark.asyncio
-async def test_approve_writes_notification(app_client, admin_token):
+async def test_approve_writes_notification(app_client, seed_test_communities, admin_token):
     """F-LAUNCH-4 + F-LAUNCH-8: launch_approved notification written."""
     from app.db.notifications import notifications_collection
 
@@ -125,7 +125,7 @@ async def test_approve_writes_notification(app_client, admin_token):
 
 
 @pytest.mark.asyncio
-async def test_re_approving_returns_409(app_client, admin_token):
+async def test_re_approving_returns_409(app_client, seed_test_communities, admin_token):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res = await submit_test_launch(app_client, f["token"])
     launch_id = res["body"]["id"]
@@ -144,7 +144,7 @@ async def test_re_approving_returns_409(app_client, admin_token):
 
 
 @pytest.mark.asyncio
-async def test_approving_rejected_returns_409(app_client, admin_token):
+async def test_approving_rejected_returns_409(app_client, seed_test_communities, admin_token):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res = await submit_test_launch(app_client, f["token"])
     launch_id = res["body"]["id"]
@@ -167,7 +167,7 @@ async def test_approving_rejected_returns_409(app_client, admin_token):
 
 
 @pytest.mark.asyncio
-async def test_reject_without_comment_returns_400(app_client, admin_token):
+async def test_reject_without_comment_returns_400(app_client, seed_test_communities, admin_token):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res = await submit_test_launch(app_client, f["token"])
     launch_id = res["body"]["id"]
@@ -186,7 +186,7 @@ async def test_reject_without_comment_returns_400(app_client, admin_token):
 
 @pytest.mark.asyncio
 async def test_reject_stores_comment_and_writes_notification(
-    app_client, admin_token
+    app_client, seed_test_communities, admin_token
 ):
     from app.db.notifications import notifications_collection
 
@@ -212,7 +212,7 @@ async def test_reject_stores_comment_and_writes_notification(
 
 
 @pytest.mark.asyncio
-async def test_re_rejecting_returns_409(app_client, admin_token):
+async def test_re_rejecting_returns_409(app_client, seed_test_communities, admin_token):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res = await submit_test_launch(app_client, f["token"])
     launch_id = res["body"]["id"]
@@ -235,7 +235,7 @@ async def test_re_rejecting_returns_409(app_client, admin_token):
 
 
 @pytest.mark.asyncio
-async def test_tools_founder_launched_refuses_wrong_source(app_client):
+async def test_tools_founder_launched_refuses_wrong_source(app_client, seed_test_communities):
     from app.db.tools_founder_launched import insert as insert_fl_tool
 
     with pytest.raises(ValueError):

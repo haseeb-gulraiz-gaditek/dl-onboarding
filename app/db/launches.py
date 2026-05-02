@@ -44,6 +44,7 @@ async def insert(
     problem_statement: str,
     icp_description: str,
     existing_presence_links: list[str],
+    target_community_slugs: list[str] | None = None,
 ) -> dict[str, Any]:
     doc = {
         "founder_user_id": founder_user_id,
@@ -51,6 +52,7 @@ async def insert(
         "problem_statement": problem_statement,
         "icp_description": icp_description,
         "existing_presence_links": existing_presence_links,
+        "target_community_slugs": target_community_slugs or [],
         "verification_status": "pending",
         "rejection_comment": None,
         "reviewed_by": None,

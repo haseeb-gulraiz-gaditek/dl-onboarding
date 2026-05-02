@@ -17,7 +17,7 @@ from tests.conftest import (
 
 
 @pytest.mark.asyncio
-async def test_founder_submit_valid_returns_201_and_pending(app_client):
+async def test_founder_submit_valid_returns_201_and_pending(app_client, seed_test_communities):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res = await submit_test_launch(app_client, f["token"])
     assert res["status"] == 201, res["body"]
@@ -29,7 +29,7 @@ async def test_founder_submit_valid_returns_201_and_pending(app_client):
 
 
 @pytest.mark.asyncio
-async def test_missing_product_url_returns_field_required(app_client):
+async def test_missing_product_url_returns_field_required(app_client, seed_test_communities):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     r = await app_client.post(
         "/api/founders/launch",
@@ -48,7 +48,7 @@ async def test_missing_product_url_returns_field_required(app_client):
 
 
 @pytest.mark.asyncio
-async def test_invalid_product_url_returns_url_invalid(app_client):
+async def test_invalid_product_url_returns_url_invalid(app_client, seed_test_communities):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res = await submit_test_launch(
         app_client, f["token"], product_url="ftp://acme.io"
@@ -58,7 +58,7 @@ async def test_invalid_product_url_returns_url_invalid(app_client):
 
 
 @pytest.mark.asyncio
-async def test_empty_problem_statement_returns_field_required(app_client):
+async def test_empty_problem_statement_returns_field_required(app_client, seed_test_communities):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res = await submit_test_launch(
         app_client, f["token"], problem_statement="   "
@@ -69,7 +69,7 @@ async def test_empty_problem_statement_returns_field_required(app_client):
 
 
 @pytest.mark.asyncio
-async def test_empty_icp_description_returns_field_required(app_client):
+async def test_empty_icp_description_returns_field_required(app_client, seed_test_communities):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res = await submit_test_launch(
         app_client, f["token"], icp_description=""
@@ -81,7 +81,7 @@ async def test_empty_icp_description_returns_field_required(app_client):
 
 
 @pytest.mark.asyncio
-async def test_too_many_presence_links_returns_field_invalid(app_client):
+async def test_too_many_presence_links_returns_field_invalid(app_client, seed_test_communities):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     links = [f"https://example.com/{i}" for i in range(7)]
     res = await submit_test_launch(
@@ -94,7 +94,7 @@ async def test_too_many_presence_links_returns_field_invalid(app_client):
 
 
 @pytest.mark.asyncio
-async def test_user_role_cannot_submit_launch(app_client):
+async def test_user_role_cannot_submit_launch(app_client, seed_test_communities):
     body = await signup_user(app_client, "maya@example.com")
     res = await submit_test_launch(app_client, body["jwt"])
     assert res["status"] == 403
@@ -102,7 +102,7 @@ async def test_user_role_cannot_submit_launch(app_client):
 
 
 @pytest.mark.asyncio
-async def test_unauthenticated_cannot_submit_launch(app_client):
+async def test_unauthenticated_cannot_submit_launch(app_client, seed_test_communities):
     r = await app_client.post(
         "/api/founders/launch",
         json={
@@ -116,7 +116,7 @@ async def test_unauthenticated_cannot_submit_launch(app_client):
 
 
 @pytest.mark.asyncio
-async def test_founder_can_submit_after_rejection(app_client):
+async def test_founder_can_submit_after_rejection(app_client, seed_test_communities):
     """F-LAUNCH-1: append-only — second submission allowed."""
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     res1 = await submit_test_launch(app_client, f["token"])
@@ -132,7 +132,7 @@ async def test_founder_can_submit_after_rejection(app_client):
 
 
 @pytest.mark.asyncio
-async def test_list_only_own_launches(app_client):
+async def test_list_only_own_launches(app_client, seed_test_communities):
     f1 = await signup_founder_with_token(app_client, "aamir@example.com")
     f2 = await signup_founder_with_token(app_client, "tara@example.com")
 
@@ -154,7 +154,7 @@ async def test_list_only_own_launches(app_client):
 
 
 @pytest.mark.asyncio
-async def test_list_status_filter(app_client):
+async def test_list_status_filter(app_client, seed_test_communities):
     f = await signup_founder_with_token(app_client, "aamir@example.com")
     await submit_test_launch(app_client, f["token"])
 
@@ -173,7 +173,7 @@ async def test_list_status_filter(app_client):
 
 
 @pytest.mark.asyncio
-async def test_get_other_founders_launch_returns_404(app_client):
+async def test_get_other_founders_launch_returns_404(app_client, seed_test_communities):
     f1 = await signup_founder_with_token(app_client, "aamir@example.com")
     f2 = await signup_founder_with_token(app_client, "tara@example.com")
     res = await submit_test_launch(app_client, f1["token"])

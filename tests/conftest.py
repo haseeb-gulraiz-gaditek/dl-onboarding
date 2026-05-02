@@ -598,12 +598,15 @@ async def signup_founder_with_token(client, email: str = "frank@example.com") ->
 
 async def submit_test_launch(client, token: str, **overrides) -> dict:
     """POST /api/founders/launch with sane defaults; returns the parsed
-    response body."""
+    response body. NOTE: callers must ensure `seed_test_communities`
+    is in scope so the default `target_community_slugs` resolve.
+    Pass `target_community_slugs=[...]` to override or test edge cases."""
     payload = {
         "product_url": "https://acme.io",
         "problem_statement": "Marketers waste 3 hours weekly compiling reports.",
         "icp_description": "Marketing ops at 20-200 person SaaS startups.",
         "existing_presence_links": ["https://x.com/acme"],
+        "target_community_slugs": ["marketing-ops"],
     }
     payload.update(overrides)
     r = await client.post(

@@ -90,6 +90,7 @@ async def admin_detail(
         problem_statement=doc["problem_statement"],
         icp_description=doc["icp_description"],
         existing_presence_links=doc.get("existing_presence_links") or [],
+        target_community_slugs=doc.get("target_community_slugs") or [],
         verification_status=doc["verification_status"],
         rejection_comment=doc.get("rejection_comment"),
         reviewed_by=doc.get("reviewed_by"),

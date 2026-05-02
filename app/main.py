@@ -31,6 +31,9 @@ from app.db.communities import ensure_indexes as ensure_community_indexes
 from app.db.community_memberships import (
     ensure_indexes as ensure_membership_indexes,
 )
+from app.db.engagements import (
+    ensure_indexes as ensure_engagement_indexes,
+)
 from app.db.launches import ensure_indexes as ensure_launch_indexes
 from app.db.mongo import close_mongo, init_mongo
 from app.db.notifications import (
@@ -91,6 +94,7 @@ async def lifespan(app: FastAPI):
     await ensure_launch_indexes()
     await ensure_tools_fl_indexes()
     await ensure_notification_indexes()
+    await ensure_engagement_indexes()
     try:
         yield
     finally:

@@ -18,10 +18,12 @@ from app.api import auth as auth_router
 from app.api import me as me_router
 from app.api import onboarding as onboarding_router
 from app.api import questions as questions_router
+from app.api import recommendations as recommendations_router
 from app.db.answers import ensure_indexes as ensure_answer_indexes
 from app.db.mongo import close_mongo, init_mongo
 from app.db.profiles import ensure_indexes as ensure_profile_indexes
 from app.db.questions import ensure_indexes as ensure_question_indexes
+from app.db.recommendations import ensure_indexes as ensure_rec_indexes
 from app.db.tools_seed import ensure_indexes as ensure_tools_seed_indexes
 from app.db.users import ensure_indexes as ensure_user_indexes
 from app.embeddings.vector_store import close_weaviate_client
@@ -60,6 +62,7 @@ async def lifespan(app: FastAPI):
     await ensure_answer_indexes()
     await ensure_profile_indexes()
     await ensure_tools_seed_indexes()
+    await ensure_rec_indexes()
     try:
         yield
     finally:
@@ -126,6 +129,7 @@ app.include_router(questions_router.router)
 app.include_router(answers_router.router)
 app.include_router(admin_catalog_router.router)
 app.include_router(onboarding_router.router)
+app.include_router(recommendations_router.router)
 
 
 @app.get("/health")

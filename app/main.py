@@ -15,10 +15,14 @@ from fastapi.responses import JSONResponse
 from app.api import admin_catalog as admin_catalog_router
 from app.api import answers as answers_router
 from app.api import auth as auth_router
+from app.api import comments as comments_router
+from app.api import communities as communities_router
 from app.api import me as me_router
 from app.api import onboarding as onboarding_router
+from app.api import posts as posts_router
 from app.api import questions as questions_router
 from app.api import recommendations as recommendations_router
+from app.api import votes as votes_router
 from app.db.answers import ensure_indexes as ensure_answer_indexes
 from app.db.comments import ensure_indexes as ensure_comment_indexes
 from app.db.communities import ensure_indexes as ensure_community_indexes
@@ -129,6 +133,18 @@ async def _validation_handler(_: Request, exc: RequestValidationError) -> JSONRe
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={"error": "field_required", "field": "comment"},
             )
+        # F-COM-3 / F-COM-5 field-required cases.
+        if loc and loc[-1] in ("title", "body_md", "post_id"):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "field_required", "field": loc[-1]},
+            )
+        # F-COM-6: target_type / direction enum failures.
+        if loc and loc[-1] in ("target_type", "direction", "target_id"):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "target_invalid"},
+            )
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={"error": "invalid_request"},
@@ -142,6 +158,11 @@ app.include_router(answers_router.router)
 app.include_router(admin_catalog_router.router)
 app.include_router(onboarding_router.router)
 app.include_router(recommendations_router.router)
+app.include_router(communities_router.router)
+app.include_router(posts_router.router)
+app.include_router(posts_router.feed_router)
+app.include_router(comments_router.router)
+app.include_router(votes_router.router)
 
 
 @app.get("/health")

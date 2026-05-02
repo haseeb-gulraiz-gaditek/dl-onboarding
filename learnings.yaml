@@ -218,3 +218,46 @@ learnings:
       actually in the DB for user X" scripts handy; cheaper than
       adding a debug endpoint.
     category: process
+  - date: 2026-05-02
+    cycle: "recommendation-engine"
+    insight: |
+      Mongomock-motor strips tzinfo on round-trip; production Motor
+      preserves it. Writing `datetime.now(timezone.utc)` then
+      reading it back produces a NAIVE datetime in tests but an
+      AWARE one in prod. First TTL comparison `expires_at <= now`
+      raised TypeError("can't compare offset-naive and offset-aware
+      datetimes") -- a test-only failure invisible in prod until a
+      Mongo restart wiped the cache. Fix: an `_as_utc` coercer that
+      treats naive datetimes as UTC. Pattern for any future code
+      reading datetime fields back from Mongo: always coerce to UTC
+      before comparing, even in code that "obviously" only writes
+      aware datetimes.
+    category: testing
+  - date: 2026-05-02
+    cycle: "recommendation-engine"
+    insight: |
+      Monkey-patching a module-level function imported by name does
+      NOT propagate to modules that already imported the symbol
+      directly. engine.py does `from app.recommendations.ranker
+      import rank_with_llm`, which binds the function into engine's
+      namespace at import time. Patching `app.recommendations.ranker
+      .rank_with_llm` leaves engine.rank_with_llm pointing at the
+      original. The fix: patch BOTH locations, or restructure to
+      import the module (`from app.recommendations import ranker`)
+      and call `ranker.rank_with_llm(...)` so the lookup happens at
+      call time. Future cycles using monkeypatch.setattr should
+      grep for `from X import Y` to find every binding.
+    category: testing
+  - date: 2026-05-02
+    cycle: "recommendation-engine"
+    insight: |
+      Caching a *degraded* response is the right default. First
+      instinct was to skip caching when the ranker fails so the next
+      request retries immediately. Wrong: a sustained OpenAI outage
+      would pin every authenticated user against a flaming OpenAI
+      endpoint, multiplying our 429s and our bill. Caching with
+      `degraded: true` means we serve a slightly worse response for
+      up to 7 days and let the next natural cache miss re-attempt.
+      Generalizable principle: when the upstream is flaky, cache
+      the failure shape too -- with a flag the client can read.
+    category: architecture

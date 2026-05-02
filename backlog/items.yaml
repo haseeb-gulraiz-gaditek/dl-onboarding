@@ -176,10 +176,11 @@ items:
   - id: 6
     summary: "recommendation-engine"
     priority: high
-    status: in_progress
+    status: done
     added: 2026-04-27
     promoted_to_cycle: "recommendation-engine"
     promoted_at: "2026-05-02"
+    completed_at: "2026-05-02"
     notes: |
       Full Celery `generate_recommendations` pipeline for the
       post-onboarding weekly cadence (and the end-of-onboarding

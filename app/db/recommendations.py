@@ -43,19 +43,29 @@ async def upsert_for_user(user_id, doc: dict[str, Any]) -> None:
     )
 
 
+def _as_utc(dt: datetime | None) -> datetime | None:
+    """Mongomock returns naive datetimes; production Mongo returns
+    UTC-aware. Normalize so comparisons don't raise."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 async def is_cache_valid(rec_doc: dict[str, Any], profile_doc: dict[str, Any] | None) -> bool:
     """Cache is valid iff TTL has not elapsed AND the profile has not
     been invalidated since the rec was generated."""
     now = datetime.now(timezone.utc)
-    expires_at = rec_doc.get("cache_expires_at")
+    expires_at = _as_utc(rec_doc.get("cache_expires_at"))
     if expires_at is None or expires_at <= now:
         return False
 
     if profile_doc is None:
         return True
 
-    invalidated_at = profile_doc.get("last_invalidated_at")
-    generated_at = rec_doc.get("generated_at")
+    invalidated_at = _as_utc(profile_doc.get("last_invalidated_at"))
+    generated_at = _as_utc(rec_doc.get("generated_at"))
     if invalidated_at is None or generated_at is None:
         return True
     return invalidated_at <= generated_at

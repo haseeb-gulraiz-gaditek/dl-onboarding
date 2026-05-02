@@ -63,12 +63,58 @@
 
 ## Validation
 
+### Automated
 - [ ] All implementation tasks above checked off
 - [ ] Full test suite green (cycles #1–#7 must continue to pass)
-- [ ] Submission smoke: sign up Aamir as founder; POST /api/founders/launch with the canonical payload; verify launches row exists with status="pending"
-- [ ] Admin queue smoke: as admin@example.com, GET /admin/launches?status=pending shows the row; approve it; verify tools_founder_launched row created with derived slug
-- [ ] Slug collision smoke: seed a tools_seed row with slug="acme"; submit a launch with product_url="https://acme.io"; approve; verify the new tool's slug is "acme-2"
-- [ ] Reject smoke: submit second launch; reject with comment; verify rejection_comment stored and notification row written
-- [ ] Constitutional check: tools_seed has zero rows with source="founder_launch" after the smoke (cycle #3 invariant intact)
 - [ ] Spec-delta scenarios verifiably hold in implementation
-- [ ] No constitutional regression: launch storage stays in tools_founder_launched; recommendation engine still queries tools_seed only (cycle #9 is the cross-over point per the C2 amendment)
+
+### Endpoint smokes (live server, real Mongo Atlas)
+
+> Run after `uvicorn app.main:app --reload --port 8000` is up. Use any HTTP client (curl/Postman/HTTPie). Substitute `<jwt>` and `<launch_id>` between calls.
+
+**1. POST /api/founders/launch (F-LAUNCH-1)**
+- [ ] Sign up Aamir: `POST /api/auth/signup` with `role_question_answer="launching_product"` → returns founder JWT
+- [ ] `POST /api/founders/launch` with `{product_url, problem_statement, icp_description, existing_presence_links}` → 201 with `verification_status: "pending"`
+- [ ] Try same call with `role_type=user` JWT → 403 role_mismatch
+- [ ] Try with no Authorization header → 401 auth_required
+- [ ] Try with empty `problem_statement` → 400 field_required(problem_statement)
+- [ ] Try with `product_url: "not-a-url"` → 400 url_invalid
+
+**2. GET /api/founders/launches + /{id} (F-LAUNCH-2)**
+- [ ] Aamir GETs `/api/founders/launches` → list contains his row, newest-first
+- [ ] `?status=pending` filter returns the row; `?status=approved` returns empty
+- [ ] `GET /api/founders/launches/{id}` for own launch → 200
+- [ ] Sign up second founder Tara; have her GET Aamir's `{id}` → 404 launch_not_found
+
+**3. GET /admin/launches + /{id} (F-LAUNCH-3)**
+- [ ] As `admin@example.com`, `GET /admin/launches` → defaults to status=pending; row visible
+- [ ] `GET /admin/launches/{id}` includes `founder_email: "aamir@example.com"`
+- [ ] As non-admin user → 403 admin_required
+
+**4. POST /admin/launches/{id}/approve (F-LAUNCH-4)**
+- [ ] Admin approves Aamir's launch → 200 with updated launch (`approved_tool_slug` populated)
+- [ ] Verify `tools_founder_launched` has the row with `is_founder_launched: true`, `launched_via_id: <launch_id>`, `source: "founder_launch"`
+- [ ] Verify `notifications` has a `launch_approved` row for Aamir's user_id
+- [ ] Re-approve same launch → 409 launch_already_resolved
+
+**5. POST /admin/launches/{id}/reject (F-LAUNCH-5)**
+- [ ] Aamir submits a SECOND launch (append-only test) → 201
+- [ ] Admin rejects with `{comment: "ICP too vague"}` → 200 with `rejection_comment` stored
+- [ ] Verify `notifications` has a `launch_rejected` row
+- [ ] Reject without comment → 400 field_required(comment)
+- [ ] Re-reject already-rejected → 409 launch_already_resolved
+- [ ] Aamir submits a THIRD launch (append-only after rejection) → 201
+
+**6. Slug collision smoke (F-LAUNCH-6)**
+- [ ] Pick an existing seed slug (e.g., `cursor`); submit a launch with `product_url: "https://cursor.com"` → approve → verify new tool's slug is `cursor-2`
+- [ ] Submit another launch with same domain → approve → verify slug is `cursor-3`
+
+**7. Constitutional checks**
+- [ ] `db.tools_seed.countDocuments({source: "founder_launch"})` === 0 — cycle #3 invariant intact
+- [ ] `db.tools_founder_launched.countDocuments({source: {$ne: "founder_launch"}})` === 0 — F-LAUNCH-7 inverse seal intact
+- [ ] `POST /api/recommendations` for Maya does NOT include any founder-launched tools (cycle #9 is the cross-over per the C2 amendment)
+- [ ] `POST /api/onboarding/match` for Maya does NOT include any founder-launched tools
+
+### Idempotency / re-runs
+- [ ] Restart the server; re-fetch `/api/founders/launches` → same rows visible (Mongo persistence working)
+- [ ] Run any test that touched the DB twice — no schema drift, no orphan rows

@@ -20,12 +20,19 @@ from app.api import onboarding as onboarding_router
 from app.api import questions as questions_router
 from app.api import recommendations as recommendations_router
 from app.db.answers import ensure_indexes as ensure_answer_indexes
+from app.db.comments import ensure_indexes as ensure_comment_indexes
+from app.db.communities import ensure_indexes as ensure_community_indexes
+from app.db.community_memberships import (
+    ensure_indexes as ensure_membership_indexes,
+)
 from app.db.mongo import close_mongo, init_mongo
+from app.db.posts import ensure_indexes as ensure_post_indexes
 from app.db.profiles import ensure_indexes as ensure_profile_indexes
 from app.db.questions import ensure_indexes as ensure_question_indexes
 from app.db.recommendations import ensure_indexes as ensure_rec_indexes
 from app.db.tools_seed import ensure_indexes as ensure_tools_seed_indexes
 from app.db.users import ensure_indexes as ensure_user_indexes
+from app.db.votes import ensure_indexes as ensure_vote_indexes
 from app.embeddings.vector_store import close_weaviate_client
 
 
@@ -63,6 +70,11 @@ async def lifespan(app: FastAPI):
     await ensure_profile_indexes()
     await ensure_tools_seed_indexes()
     await ensure_rec_indexes()
+    await ensure_community_indexes()
+    await ensure_membership_indexes()
+    await ensure_post_indexes()
+    await ensure_comment_indexes()
+    await ensure_vote_indexes()
     try:
         yield
     finally:

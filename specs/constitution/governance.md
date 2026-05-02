@@ -35,3 +35,4 @@ Tier definitions follow STD-002 §8 verbatim:
 | Date | File | Change | Author |
 |------|------|--------|--------|
 | 2026-04-27 | governance.md | Initial draft — solo authority, STD-002 tier alignment, explicit amend-on-first-hire trigger, +24h pause for C3 | Haseeb Gulraiz |
+| 2026-05-02 | principles.md | C2 — We Always #3: allow well-matched launches to appear alongside organic recs in a distinct `launches` slot, gated by the same match-quality threshold as the concierge nudge. Storage and ranking pipelines stay separate. | Haseeb Gulraiz |

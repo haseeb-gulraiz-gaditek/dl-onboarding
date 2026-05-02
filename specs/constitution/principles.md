@@ -2,7 +2,7 @@
 
 > Part of the Mesh Product Constitution
 
-**Last amended:** 2026-04-27
+**Last amended:** 2026-05-02
 
 ---
 
@@ -10,7 +10,9 @@
 
 1. **Recommend honestly, including "skip this."** Even when a paid launch matches a profile, the concierge surfaces what's wrong with it alongside what's right. The moment users sense shilling, trust collapses — and trust is the only moat.
 2. **Treat the user's profile as theirs.** Profile data is exportable in full; users can leave with everything they put in. No dark patterns to lock context inside Mesh.
-3. **Separate the recommendation engine from the paid-launch placement.** Architecturally — different code paths, different storage, different models. A founder paying for a launch never moves a tool's organic recommendation score.
+3. **Separate organic recommendations from launch surfacing.** Storage stays separate (`tools_seed` for organic, `tools_founder_launched` for launches) and pipelines stay separate (organic ranking ignores launches). Launches MAY appear alongside organic recommendations when they clear the same match-quality threshold as the concierge nudge (top 5% / cosine > 0.85), but they are returned in a distinct `launches` slot — never commingled with the organic ranking signal. Founder payments never move an organic recommendation score.
+
+  *Amended 2026-05-02 (C2): the original principle barred any cross-surface placement. Cycle #8 lit up the founder side; we accepted that genuinely well-matched launches earn the same right to be surfaced as organic picks, with the threshold gate (cycle #9) and the separated slot keeping "recommend honestly" intact.*
 
 ## We Never
 

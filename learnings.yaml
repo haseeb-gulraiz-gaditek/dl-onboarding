@@ -177,3 +177,44 @@ learnings:
       best-effort write to an external system should have a corresponding
       "re-publish from source-of-truth" CLI for recovery.
     category: technical
+  - date: 2026-05-02
+    cycle: "fast-onboarding-match-and-graph"
+    insight: |
+      Two-mode endpoints are easier to reason about than blended ones.
+      Considered a single similarity-based path that "just works" from
+      question 1 -- but the first 3 answers don't carry enough signal
+      to disambiguate at workflow granularity, AND running OpenAI on
+      every tap is expensive UX. Splitting into generic mode (Q1-3,
+      no OpenAI, role-bucket lookup) vs embedding mode (Q4+, OpenAI
+      lazy-cached, Weaviate query) gave us sharp test boundaries,
+      cheap first-impression UX, and a clear failure mode (embedding
+      mode falls back to generic on any error). Reuse this pattern:
+      when a feature has a "few inputs / many inputs" split in cost
+      or quality, model it as discrete modes, not a blend.
+    category: process
+  - date: 2026-05-02
+    cycle: "fast-onboarding-match-and-graph"
+    insight: |
+      Validation confusion around "which 'role' question are we
+      talking about?" Two role-shaped fields exist in the system:
+      (1) the SIGNUP question that splits user vs founder
+      (role_type, set at /api/auth/signup), and (2) the ONBOARDING
+      question role.primary_function, set later via /api/answers.
+      User reasonably assumed answering "engineering" in (1)
+      populated (2). Cycle worked fine but the spec language could
+      be tighter. Future cycles that reuse "role" terminology should
+      explicitly differentiate or pick a different word for one.
+    category: product
+  - date: 2026-05-02
+    cycle: "fast-onboarding-match-and-graph"
+    insight: |
+      Diagnostic Python one-liners are worth their weight when a
+      smoke test produces unexpected output. Wrote a 20-line script
+      that pulled the user's role answer from Mongo and ran
+      generic_match against their actual user_id; revealed in one
+      command that the system was working correctly and the user
+      had been smoke-testing an account that hadn't answered the
+      role question yet. Pattern: keep a stash of "show me what's
+      actually in the DB for user X" scripts handy; cheaper than
+      adding a debug endpoint.
+    category: process

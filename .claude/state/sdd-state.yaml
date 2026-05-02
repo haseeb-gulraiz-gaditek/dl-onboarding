@@ -8,12 +8,12 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: fast-onboarding-match-and-graph
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-02T01:30:00+05:00"
-  tracker_ref: "backlog:5"
-  base_branch: main
-  branch_name: fast-onboarding-match-and-graph
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
   - slug: auth-role-split
     completed: "2026-04-30"
@@ -27,3 +27,6 @@ history:
   - slug: weaviate-pipeline
     completed: "2026-05-02"
     summary: "OpenAI text-embedding-3-small + Weaviate Cloud Sandbox + Mongo (source of truth). Mid-cycle pivot from Atlas Vector Search to Weaviate per user call. Three CLIs: init-weaviate, backfill-tools, republish-tools. similarity_search with three execution paths (mongomock test fallback, Weaviate production, Mongo cosine production fallback). 546 tools embedded + published. 25 tests added; full suite 87 green."
+  - slug: fast-onboarding-match-and-graph
+    completed: "2026-05-02"
+    summary: "POST /api/onboarding/match (API only; React graph is parallel Claude Design track). Two-mode dispatch by answered_count: generic role-bucket for Q1-3 (no OpenAI; ROLE_TO_CATEGORIES map; alphabetical top-5 with catalog-wide fallback), embedding mode for Q4+ (ensure_profile_embedding + similarity_search). OpenAI/Weaviate failures gracefully degrade to generic mode. 14 tests added; full suite 101 green."

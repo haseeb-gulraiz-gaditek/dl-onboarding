@@ -412,3 +412,126 @@ def mock_openai_embed(monkeypatch):
 
     monkeypatch.setattr("app.embeddings.openai.embed_text", _fake_embed)
     monkeypatch.setattr("app.embeddings.lifecycle.embed_text", _fake_embed)
+
+
+# ---- Recommendations fixtures (cycle: recommendation-engine) ----
+
+
+@pytest.fixture(autouse=True)
+def mock_openai_chat(monkeypatch):
+    """Replace `rank_with_llm` with a deterministic stub.
+
+    Patches BOTH the ranker module and the engine module (engine.py
+    does `from app.recommendations.ranker import rank_with_llm`, so
+    the imported reference also needs replacing).
+
+    Default behavior: returns up to `count` picks from the candidates,
+    all `verdict="try"` with reasoning that references the slug.
+    Tests that need a failing ranker, hallucinated slug, or "skip"
+    verdict override locally with `monkeypatch.setattr`.
+    """
+
+    async def _fake_rank(profile, recent_answers, candidates, count):
+        from app.models.recommendation import RankerPick
+
+        picks: list[RankerPick] = []
+        for c in candidates[:count]:
+            picks.append(
+                RankerPick(
+                    slug=c["slug"],
+                    verdict="try",
+                    reasoning=f"Mock reasoning for {c['slug']}.",
+                )
+            )
+        return picks
+
+    monkeypatch.setattr(
+        "app.recommendations.ranker.rank_with_llm", _fake_rank
+    )
+    monkeypatch.setattr(
+        "app.recommendations.engine.rank_with_llm", _fake_rank
+    )
+
+
+_RECS_TOOLS: list[dict] = [
+    # 6 approved tools across categories so similarity_search has
+    # enough candidates to exercise truncation/clamping.
+    {"slug": "cursor", "name": "Cursor", "category": "engineering", "labels": ["all_time_best"]},
+    {"slug": "linear", "name": "Linear", "category": "productivity", "labels": ["all_time_best"]},
+    {"slug": "notion", "name": "Notion", "category": "productivity", "labels": ["all_time_best"]},
+    {"slug": "figma", "name": "Figma", "category": "design", "labels": ["all_time_best"]},
+    {"slug": "vercel", "name": "Vercel", "category": "engineering", "labels": ["new"]},
+    {"slug": "raycast", "name": "Raycast", "category": "productivity", "labels": ["gaining_traction"]},
+]
+
+
+@pytest_asyncio.fixture
+async def seed_recs_catalog(app_client):
+    """Seed 6 approved tools, each with a deterministic 1536-dim
+    embedding so similarity_search returns them as candidates."""
+    from app.db.tools_seed import tools_seed_collection
+
+    now = datetime.now(timezone.utc)
+    docs = []
+    for entry in _RECS_TOOLS:
+        digest = hashlib.md5(entry["slug"].encode("utf-8")).digest()
+        embedding = [((digest[i % 16] - 128) / 128.0) for i in range(1536)]
+        docs.append({
+            **entry,
+            "tagline": f"{entry['name']} tagline",
+            "description": f"{entry['name']} description for ranker prompt.",
+            "url": f"https://example.com/{entry['slug']}",
+            "pricing_summary": "Free",
+            "curation_status": "approved",
+            "rejection_comment": None,
+            "source": "manual",
+            "embedding": embedding,
+            "created_at": now,
+            "last_reviewed_at": None,
+            "reviewed_by": None,
+        })
+    await tools_seed_collection().insert_many(docs)
+    yield _RECS_TOOLS
+
+
+async def prepare_user_for_recs(client, email: str = "maya@example.com", n_answers: int = 3) -> dict:
+    """Sign up a user, insert N dummy answers, force a profile with a
+    fresh embedding so similarity_search has a query vector.
+
+    Returns {token, user_id (ObjectId), email}.
+    """
+    from bson import ObjectId
+    from app.db.profiles import profiles_collection
+
+    body = await signup_user(client, email)
+    token = body["jwt"]
+    user_id = ObjectId(body["user"]["id"])
+
+    await insert_dummy_answers(user_id, n_answers)
+
+    digest = hashlib.md5(email.encode("utf-8")).digest()
+    embedding = [((digest[i % 16] - 128) / 128.0) for i in range(1536)]
+    now = datetime.now(timezone.utc)
+    await profiles_collection().update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "embedding": embedding,
+                "last_recompute_at": now,
+                "last_invalidated_at": now,
+            },
+            "$setOnInsert": {
+                "user_id": user_id,
+                "role": None,
+                "current_tools": [],
+                "workflows": [],
+                "tools_tried_bounced": [],
+                "counterfactual_wishes": [],
+                "budget_tier": None,
+                "exportable": True,
+                "created_at": now,
+            },
+        },
+        upsert=True,
+    )
+    return {"token": token, "user_id": user_id, "email": email}

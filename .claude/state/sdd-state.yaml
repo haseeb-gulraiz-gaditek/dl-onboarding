@@ -8,13 +8,16 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: founder-launch-submission-and-verification
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-02T18:00:00+05:00"
-  tracker_ref: "backlog:8"
-  base_branch: main
-  branch_name: founder-launch-submission-and-verification
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
+  - slug: founder-launch-submission-and-verification
+    completed: "2026-05-02"
+    summary: "Founder side opens. Three new collections (launches, tools_founder_launched, notifications) + 7 endpoints (3 founder, 4 admin). Submission via POST /api/founders/launch behind require_role(founder). Admin queue/approve/reject reuses cycle #3's require_admin (ADMIN_EMAILS). Approve derives slug from product URL host (kebab-cased, full TLD), scans both tool collections for collision, creates tools_founder_launched row with source='founder_launch'+is_founder_launched=true, atomic state transition via find_one_and_update on verification_status='pending'. Notifications collection writes launch_approved/rejected rows (cycle #11 builds inbox UI; SMTP deferred). Pre-cycle C2 amendment to principles.md We Always #3: launches MAY appear alongside organic recs in a separate slot, gated by match-quality threshold; cycle #9 implements the fan-in. 31 tests; full suite 185 green."
   - slug: communities-and-flat-comments
     completed: "2026-05-02"
     summary: "Six new collections (communities, memberships, posts, comments, votes) + tools_seed.vote_score field. Nine endpoints across communities/posts/comments/votes routers. Constitutional founder-write-block enforced via require_role(user) on five write endpoints; reads open to founders. Single canonical post + cross_posted_to[] (≤3 communities) keeps vote tallies coherent. 10 hand-authored seed communities across role/stack/outcome axes. Vote semantics: insert/toggle-off/flip with denormalized vote_score on posts, comments, AND tools (drives product-page like count). 35 tests; full suite 154 green."

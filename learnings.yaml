@@ -304,3 +304,44 @@ learnings:
       backing row; only fork when the per-fanout state truly
       diverges.
     category: architecture
+  - date: 2026-05-02
+    cycle: "founder-launch-submission-and-verification"
+    insight: |
+      Constitutional amendments belong in the cycle that needs the
+      change, not after it. Cycle #8 surfaced "should launches
+      appear in recommendations?" -- the original principle barred
+      it. Rather than scaffold around the principle and patch later,
+      ran /vkf:amend (C2) before scaffolding. The amendment commit
+      sits at the head of the cycle branch, alongside the impl that
+      depends on it. Pattern: when a tension touches the
+      constitution, amend first, then scaffold; the amendment is
+      part of the cycle's audit trail.
+    category: process
+  - date: 2026-05-02
+    cycle: "founder-launch-submission-and-verification"
+    insight: |
+      Concurrency-safe state transitions via find_one_and_update
+      filtered on the pre-state. Two admins clicking approve at
+      the same instant could otherwise both write a
+      tools_founder_launched row + both flip the launch row.
+      Filtering the update on verification_status="pending" makes
+      the transition atomic: whichever update lands first claims
+      the resolution; the second sees None back from
+      find_one_and_update and the route returns 409. Pattern for
+      any "review queue" surface: condition the resolution write on
+      the pre-state, not just the row id.
+    category: architecture
+  - date: 2026-05-02
+    cycle: "founder-launch-submission-and-verification"
+    insight: |
+      Spec-delta wording can drift from implementation reality
+      mid-cycle; treat early test failures as a chance to re-sync,
+      not just to update tests. Two failures here surfaced spec
+      bugs: (1) the spec said admin denial is `admin_required`, but
+      cycle #3's actual code is `admin_only`; my test inherited the
+      spec mistake. (2) the spec example showed `acme.io` slugifying
+      to `acme`, but the algorithm I wrote (and prefer) keeps the
+      full host as `acme-io`. I patched both in the spec-delta
+      before merging. Pattern: when impl-vs-spec drift surfaces,
+      pick the truer answer and fix BOTH the test and the spec.
+    category: testing

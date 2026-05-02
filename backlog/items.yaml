@@ -286,8 +286,10 @@ items:
   - id: 9
     summary: "launch-publish-and-concierge-nudge"
     priority: high
-    status: queued
+    status: in_progress
     added: 2026-04-27
+    promoted_to_cycle: "launch-publish-and-concierge-nudge"
+    promoted_at: "2026-05-03"
     notes: |
       Second half of the founder side. Triggered by an approved
       launch from #8.

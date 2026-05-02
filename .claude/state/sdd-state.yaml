@@ -8,13 +8,16 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: communities-and-flat-comments
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-02T16:00:00+05:00"
-  tracker_ref: "backlog:7"
-  base_branch: main
-  branch_name: communities-and-flat-comments
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
+  - slug: communities-and-flat-comments
+    completed: "2026-05-02"
+    summary: "Six new collections (communities, memberships, posts, comments, votes) + tools_seed.vote_score field. Nine endpoints across communities/posts/comments/votes routers. Constitutional founder-write-block enforced via require_role(user) on five write endpoints; reads open to founders. Single canonical post + cross_posted_to[] (≤3 communities) keeps vote tallies coherent. 10 hand-authored seed communities across role/stack/outcome axes. Vote semantics: insert/toggle-off/flip with denormalized vote_score on posts, comments, AND tools (drives product-page like count). 35 tests; full suite 154 green."
   - slug: recommendation-engine
     completed: "2026-05-02"
     summary: "POST /api/recommendations behind require_role(user). 3-answer gate; 7-day cache (TTL + last_invalidated_at). Pipeline: ensure_profile_embedding → similarity_search top-20 (curation_status=approved) → GPT-5 ranker via beta.chat.completions.parse with Pydantic structured output → drop hallucinated slugs → upsert. verdict ∈ {try, skip} surfaces 'Recommend honestly, including skip-this' principle. Degraded path on ranker exception caches a similarity-only response with verdict=try. 18 tests added; full suite 119 green."

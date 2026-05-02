@@ -211,10 +211,11 @@ items:
   - id: 7
     summary: "communities-and-flat-comments"
     priority: high
-    status: in_progress
+    status: done
     added: 2026-04-27
     promoted_to_cycle: "communities-and-flat-comments"
     promoted_at: "2026-05-02"
+    completed_at: "2026-05-02"
     notes: |
       Communities + posts + flat comments + voting (V1: NO threading
       — `parent_comment_id` schema retained, API ignores it; threading

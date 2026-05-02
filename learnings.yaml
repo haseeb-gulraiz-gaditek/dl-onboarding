@@ -261,3 +261,46 @@ learnings:
       Generalizable principle: when the upstream is flaky, cache
       the failure shape too -- with a flag the client can read.
     category: architecture
+  - date: 2026-05-02
+    cycle: "communities-and-flat-comments"
+    insight: |
+      Mongomock-motor doesn't reliably enforce compound unique
+      indexes -- the unique index on (user_id, community_id) didn't
+      catch a duplicate insert in the test suite. Refactored
+      community_memberships.add() from "insert + catch
+      DuplicateKeyError" to "check then insert", which works in
+      both environments. Production race window is closed by the
+      real Mongo unique index regardless. Same pattern will
+      probably bite when adding more compound-unique indexes
+      across cycles -- prefer check-then-insert if the helper is
+      called from a route that needs idempotency.
+    category: testing
+  - date: 2026-05-02
+    cycle: "communities-and-flat-comments"
+    insight: |
+      Time-based sort-DESC over rapid bursts is undefined without
+      a deterministic tie-breaker. Three posts created in
+      successive lines of test code shared a created_at
+      microsecond; mongomock returned them in insert order, real
+      MongoDB might too, but neither is contractually
+      newest-first. Adding _id DESC as the secondary sort fixed
+      both posts and comments listings. Pattern: any "newest
+      first" sort needs (timestamp DESC, _id DESC). ObjectIds
+      embed a counter so the secondary sort is meaningful even
+      within a microsecond.
+    category: testing
+  - date: 2026-05-02
+    cycle: "communities-and-flat-comments"
+    insight: |
+      Single canonical post + cross_posted_to[] beats N copy-rows
+      with shared post_group_id for vote-tally integrity.
+      Considered the copy-row approach since each community could
+      then track "engagement on this post in MY feed" -- but
+      vote-splitting across copies destroys the ranking signal
+      for the same content shown in different feeds. Going
+      single-row means votes/comments accrue once; cross-posting
+      is a discovery channel, not a stamp-collecting mechanic.
+      Generalizable: when fan-out is for visibility, share the
+      backing row; only fork when the per-fanout state truly
+      diverges.
+    category: architecture

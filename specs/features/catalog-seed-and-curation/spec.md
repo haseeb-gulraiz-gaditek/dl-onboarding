@@ -46,6 +46,7 @@ The `tools_seed` collection stores Mesh-curated tool entries. Each row:
   rejection_comment: <string | null>,
   source: "manual" | "taaft" | "producthunt" | "futuretools",   // never "founder_launch"
   embedding_vector_id: <string | null>,                           // populated by future weaviate feature
+  vote_score: <int>,                                              // denormalized; updated by F-COM-7 (cycle #7)
   created_at: <datetime>,
   last_reviewed_at: <datetime | null>,
   reviewed_by: <string | null>                                    // admin email

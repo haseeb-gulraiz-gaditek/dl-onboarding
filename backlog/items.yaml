@@ -253,8 +253,10 @@ items:
   - id: 8
     summary: "founder-launch-submission-and-verification"
     priority: high
-    status: queued
+    status: in_progress
     added: 2026-04-27
+    promoted_to_cycle: "founder-launch-submission-and-verification"
+    promoted_at: "2026-05-02"
     notes: |
       First half of the founder side (split from earlier monolithic
       "launch flow" cycle).

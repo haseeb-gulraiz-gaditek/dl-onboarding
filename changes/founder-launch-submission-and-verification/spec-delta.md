@@ -124,7 +124,7 @@ Response (queue list item):
 Idempotency: re-approving an already-approved launch returns `409 launch_already_resolved`. Re-approving a rejected launch ALSO returns `409` (founder must resubmit, F-LAUNCH-1 NOTE).
 
 **Unknown launch id** → `404 launch_not_found`.
-**Non-admin caller** → `403 admin_required` (per cycle #3 F-CAT-4).
+**Non-admin caller** → `403 admin_only` (per cycle #3 F-CAT-4).
 
 ---
 
@@ -166,13 +166,15 @@ Algorithm:
 5. Check collision: scan BOTH `tools_seed.find_one({slug})` AND `tools_founder_launched.find_one({slug})`. If neither has the slug, return it.
 6. On collision, append `-2`, `-3`, ... up to `-99`, scanning both collections each time. If all variants taken, raise `RuntimeError` (admin sees 500 — this should never happen in practice).
 
-**Given** a launch with `product_url: "https://www.acme.io/about"` and no existing `acme` slug in either collection
+**Given** a launch with `product_url: "https://www.acme.io/about"` and no existing `acme-io` slug in either collection
 **When** approval is processed
-**Then** the derived slug is `acme`.
+**Then** the derived slug is `acme-io`.
 
-**Given** an existing `acme` row in `tools_seed`
+> Note: the algorithm keeps the full host kebab-cased (TLD included) rather than stripping to the second-level label. Reason: `acme.com`, `acme.io`, `acme.dev` are different products in practice, and collapsing them all to `acme` would force collision-suffixes for every common name. Keeping the TLD makes the common case collision-free.
+
+**Given** an existing `acme-io` row in `tools_seed`
 **When** a launch is approved with `product_url: "https://acme.io"`
-**Then** the derived slug is `acme-2`.
+**Then** the derived slug is `acme-io-2`.
 
 ---
 

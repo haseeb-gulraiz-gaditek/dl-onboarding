@@ -582,6 +582,38 @@ async def seed_test_communities(app_client):
     yield _TEST_COMMUNITIES
 
 
+# ---- Founder-launch helpers (cycle: founder-launch-submission-and-verification) ----
+
+
+async def signup_founder_with_token(client, email: str = "frank@example.com") -> dict:
+    """Sign up a founder, return {token, user_id, email}."""
+    from bson import ObjectId
+    body = await signup_founder(client, email)
+    return {
+        "token": body["jwt"],
+        "user_id": ObjectId(body["user"]["id"]),
+        "email": email,
+    }
+
+
+async def submit_test_launch(client, token: str, **overrides) -> dict:
+    """POST /api/founders/launch with sane defaults; returns the parsed
+    response body."""
+    payload = {
+        "product_url": "https://acme.io",
+        "problem_statement": "Marketers waste 3 hours weekly compiling reports.",
+        "icp_description": "Marketing ops at 20-200 person SaaS startups.",
+        "existing_presence_links": ["https://x.com/acme"],
+    }
+    payload.update(overrides)
+    r = await client.post(
+        "/api/founders/launch",
+        json=payload,
+        headers=auth_header(token),
+    )
+    return {"status": r.status_code, "body": r.json() if r.status_code < 500 else None, "response": r}
+
+
 async def signup_user_and_join(client, email: str, slug: str) -> dict:
     """Sign up a user and join one community. Returns
     {token, user_id, email, community_slug}."""

@@ -172,6 +172,12 @@ async def _validation_handler(_: Request, exc: RequestValidationError) -> JSONRe
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={"error": "field_invalid", "field": "existing_presence_links"},
             )
+        # F-PUB-1 (cycle #9) length / required on target_community_slugs.
+        if loc and loc[-1] == "target_community_slugs":
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "field_invalid", "field": "target_community_slugs"},
+            )
         # F-COM-6: target_type / direction enum failures.
         if loc and loc[-1] in ("target_type", "direction", "target_id"):
             return JSONResponse(

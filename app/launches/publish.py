@@ -26,9 +26,17 @@ from app.db.engagements import insert as insert_engagement
 from app.db.notifications import insert as insert_notification
 from app.db.posts import insert as insert_post
 from app.db.recommendations import recommendations_collection
-from app.embeddings.lifecycle import ensure_tool_embedding
+from app.db.tools_founder_launched import (
+    find_by_slug as fl_find_by_slug,
+    tools_founder_launched_collection,
+)
 from app.embeddings.openai import embed_text
-from app.embeddings.vector_store import PROFILE_CLASS, similarity_search
+from app.embeddings.vector_store import (
+    PROFILE_CLASS,
+    TOOL_CLASS,
+    publish_tool as vs_publish_tool,
+    similarity_search,
+)
 
 
 CONCIERGE_TOP_K = 5
@@ -37,6 +45,50 @@ TITLE_MAX_LEN = 80
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _fl_embeddable_text(tool: dict[str, Any]) -> str:
+    labels = tool.get("labels") or []
+    parts = [
+        tool.get("name", ""),
+        tool.get("tagline", ""),
+        tool.get("description", ""),
+        f"category: {tool.get('category', '')}",
+        f"labels: {', '.join(labels)}" if labels else "",
+    ]
+    return "\n".join(p for p in parts if p)
+
+
+async def _ensure_fl_tool_embedding(slug: str) -> None:
+    """Embed and persist the embedding on a tools_founder_launched row.
+
+    The cycle #4 lifecycle helper `ensure_tool_embedding` only knows
+    about `tools_seed`; this is the founder-collection equivalent so
+    F-PUB-6 (recommendation fan-in over founder-launched tools) has
+    something to query immediately after approval."""
+    tool = await fl_find_by_slug(slug)
+    if tool is None:
+        return
+    if tool.get("embedding") is not None:
+        return
+    text = _fl_embeddable_text(tool)
+    if not text.strip():
+        return
+    vector = await embed_text(text)
+    await tools_founder_launched_collection().update_one(
+        {"slug": slug}, {"$set": {"embedding": vector}}
+    )
+    # Best-effort publish to Weaviate (silent skip if unreachable).
+    await vs_publish_tool(
+        slug=slug,
+        vector=vector,
+        properties={
+            "slug": slug,
+            "category": tool.get("category"),
+            "curation_status": "approved",
+            "labels": tool.get("labels") or [],
+        },
+    )
 
 
 async def _fanout_community_posts(
@@ -156,11 +208,13 @@ async def publish_launch(
         print(f"[publish] ICP embedding failed: {exc}")
 
     # Step 2: ensure the tool's embedding so the recommendation fan-in
-    # (F-PUB-6) has something to query immediately.
+    # (F-PUB-6) has something to query immediately. The cycle #4
+    # helper only knows about tools_seed; this is the founder-side
+    # equivalent.
     try:
-        await ensure_tool_embedding(tool_slug)
+        await _ensure_fl_tool_embedding(tool_slug)
     except Exception as exc:
-        print(f"[publish] ensure_tool_embedding failed for {tool_slug}: {exc}")
+        print(f"[publish] founder-tool embedding failed for {tool_slug}: {exc}")
 
     # Step 3: community fan-out.
     summary["community_posts_count"] = await _fanout_community_posts(

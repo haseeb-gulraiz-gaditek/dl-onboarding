@@ -412,6 +412,8 @@ def mock_openai_embed(monkeypatch):
 
     monkeypatch.setattr("app.embeddings.openai.embed_text", _fake_embed)
     monkeypatch.setattr("app.embeddings.lifecycle.embed_text", _fake_embed)
+    # Cycle #9: publish orchestrator imports embed_text directly.
+    monkeypatch.setattr("app.launches.publish.embed_text", _fake_embed)
 
 
 # ---- Recommendations fixtures (cycle: recommendation-engine) ----

@@ -1,18 +1,21 @@
 """CLI dispatcher for `python -m app.seed <command>`.
 
 Currently supports:
-  questions  -- load app/seed/questions.json into the `questions` collection
-  catalog    -- load app/seed/catalog.json into the `tools_seed` collection
+  questions    -- load app/seed/questions.json into `questions`
+  catalog      -- load app/seed/catalog.json into `tools_seed`
+  communities  -- load app/seed/communities.json into `communities`
 """
 import sys
 
 from app.seed import catalog as catalog_seed
+from app.seed import communities as communities_seed
 from app.seed import questions as questions_seed
 
 
 _COMMANDS = {
     "questions": questions_seed.main,
     "catalog": catalog_seed.main,
+    "communities": communities_seed.main,
 }
 
 

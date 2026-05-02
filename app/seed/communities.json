@@ -1,0 +1,62 @@
+[
+  {
+    "slug": "marketing-ops",
+    "name": "Marketing Ops",
+    "description": "For marketers running attribution, automation, and reporting across stacks like HubSpot, GA4, and Mixpanel.",
+    "category": "role"
+  },
+  {
+    "slug": "design-shop",
+    "name": "Design Shop",
+    "description": "Designers shipping product UI, brand systems, and prototypes — Figma-first crowd talking AI tools.",
+    "category": "role"
+  },
+  {
+    "slug": "engineering-bench",
+    "name": "Engineering Bench",
+    "description": "Builders, IC engineers, and tech leads comparing AI dev tools that actually move the needle on shipping.",
+    "category": "role"
+  },
+  {
+    "slug": "product-loop",
+    "name": "Product Loop",
+    "description": "PMs and product folks discussing AI tools for discovery, specs, roadmaps, and stakeholder comms.",
+    "category": "role"
+  },
+  {
+    "slug": "creator-studio",
+    "name": "Creator Studio",
+    "description": "Solo creators, writers, and video folks using AI to compound their output without losing their voice.",
+    "category": "role"
+  },
+  {
+    "slug": "notion-power-users",
+    "name": "Notion Power Users",
+    "description": "Workflows, integrations, and AI plugins for people who run their work life out of Notion.",
+    "category": "stack"
+  },
+  {
+    "slug": "figma-power-users",
+    "name": "Figma Power Users",
+    "description": "Plugin recommendations, AI workflows, and pipeline tricks for the Figma-native designers.",
+    "category": "stack"
+  },
+  {
+    "slug": "weekly-launches",
+    "name": "Weekly Launches",
+    "description": "What new AI tool actually solved a problem this week — short, opinionated, no shilling.",
+    "category": "outcome"
+  },
+  {
+    "slug": "side-projects",
+    "name": "Side Projects",
+    "description": "AI tools that turn nights-and-weekends into shippable software — the indie hacker corner.",
+    "category": "outcome"
+  },
+  {
+    "slug": "ai-curious",
+    "name": "AI Curious",
+    "description": "For people early in their AI journey — beginner-friendly tools, real workflows, no jargon required.",
+    "category": "outcome"
+  }
+]

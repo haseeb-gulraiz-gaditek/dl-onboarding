@@ -48,9 +48,22 @@ async def add(
 ) -> bool:
     """Insert membership; returns True if inserted, False if it already
     existed. Caller is responsible for bumping community.member_count
-    only when this returns True."""
+    only when this returns True.
+
+    Check-then-insert (rather than insert + catch DuplicateKeyError)
+    because mongomock-motor's compound-unique index enforcement is
+    inconsistent. Production race window between check and insert is
+    closed by the unique index; this helper trusts the index to be
+    the final guarantee.
+    """
+    coll = community_memberships_collection()
+    existing = await coll.find_one(
+        {"user_id": user_id, "community_id": community_id}, {"_id": 1}
+    )
+    if existing is not None:
+        return False
     try:
-        await community_memberships_collection().insert_one({
+        await coll.insert_one({
             "user_id": user_id,
             "community_id": community_id,
             "joined_at": _now(),
@@ -58,7 +71,7 @@ async def add(
         })
         return True
     except Exception:
-        # Duplicate key (already a member) — treat as no-op.
+        # Lost the race in production — index caught it.
         return False
 
 

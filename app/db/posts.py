@@ -91,8 +91,10 @@ async def feed_for_community(
     }
     if before is not None:
         query["created_at"] = {"$lt": before}
+    # Secondary sort on _id DESC is a deterministic tie-breaker when
+    # several posts share the same created_at (rapid bursts; tests).
     cursor = posts_collection().find(query).sort(
-        "created_at", DESCENDING
+        [("created_at", DESCENDING), ("_id", DESCENDING)]
     ).limit(limit)
     return await cursor.to_list(length=limit)
 

@@ -60,9 +60,10 @@ async def find_by_id(comment_id: ObjectId) -> dict[str, Any] | None:
 
 
 async def for_post(post_id: ObjectId, limit: int = 200) -> list[dict[str, Any]]:
+    # _id DESC tie-breaks bursts of comments inside the same microsecond.
     cursor = comments_collection().find(
         {"post_id": post_id}
-    ).sort("created_at", DESCENDING).limit(limit)
+    ).sort([("created_at", DESCENDING), ("_id", DESCENDING)]).limit(limit)
     return await cursor.to_list(length=limit)
 
 

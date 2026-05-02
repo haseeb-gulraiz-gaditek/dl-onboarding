@@ -535,3 +535,67 @@ async def prepare_user_for_recs(client, email: str = "maya@example.com", n_answe
         upsert=True,
     )
     return {"token": token, "user_id": user_id, "email": email}
+
+
+# ---- Communities fixtures (cycle: communities-and-flat-comments) ----
+
+
+_TEST_COMMUNITIES: list[dict] = [
+    {
+        "slug": "marketing-ops",
+        "name": "Marketing Ops",
+        "description": "Marketers running attribution and reporting.",
+        "category": "role",
+    },
+    {
+        "slug": "engineering-bench",
+        "name": "Engineering Bench",
+        "description": "Builders comparing AI dev tools.",
+        "category": "role",
+    },
+    {
+        "slug": "weekly-launches",
+        "name": "Weekly Launches",
+        "description": "What new AI tool actually solved a problem this week.",
+        "category": "outcome",
+    },
+]
+
+
+@pytest_asyncio.fixture
+async def seed_test_communities(app_client):
+    """Seed 3 active communities for endpoint tests."""
+    from app.db.communities import communities_collection
+
+    now = datetime.now(timezone.utc)
+    docs = [
+        {
+            **c,
+            "is_active": True,
+            "mod_user_ids": [],
+            "member_count": 0,
+            "created_at": now,
+        }
+        for c in _TEST_COMMUNITIES
+    ]
+    await communities_collection().insert_many(docs)
+    yield _TEST_COMMUNITIES
+
+
+async def signup_user_and_join(client, email: str, slug: str) -> dict:
+    """Sign up a user and join one community. Returns
+    {token, user_id, email, community_slug}."""
+    body = await signup_user(client, email)
+    token = body["jwt"]
+    r = await client.post(
+        f"/api/communities/{slug}/join",
+        headers=auth_header(token),
+    )
+    assert r.status_code == 200, r.text
+    from bson import ObjectId
+    return {
+        "token": token,
+        "user_id": ObjectId(body["user"]["id"]),
+        "email": email,
+        "community_slug": slug,
+    }

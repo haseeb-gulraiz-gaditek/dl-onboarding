@@ -21,6 +21,7 @@ from app.db.recommendations import (
     is_cache_valid,
     upsert_for_user,
 )
+from app.db.tools_founder_launched import find_by_slug as fl_find_by_slug
 from app.db.tools_seed import find_tool_by_slug
 from app.embeddings.lifecycle import ensure_profile_embedding
 from app.embeddings.vector_store import TOOL_CLASS, similarity_search
@@ -35,6 +36,20 @@ from app.recommendations.ranker import rank_with_llm
 CACHE_TTL = timedelta(days=7)
 SIMILARITY_TOP_K = 20
 MAX_PICKS = 5
+LAUNCH_TOP_K = 5  # F-PUB-6: top-5 launches by similarity, no floor
+
+
+async def _find_tool_anywhere(slug: str) -> dict[str, Any] | None:
+    """Resolve a slug across BOTH tool collections. Used when projecting
+    cached picks/launch_picks back into the response (F-PUB-6).
+
+    Order matters: tools_seed first (the constitutional invariant from
+    cycle #3 keeps source!='founder_launch' there), then
+    tools_founder_launched."""
+    doc = await find_tool_by_slug(slug)
+    if doc is not None:
+        return doc
+    return await fl_find_by_slug(slug)
 
 
 def _now() -> datetime:
@@ -70,6 +85,7 @@ async def generate_recommendations(
     profile = await find_profile_by_user_id(user_id)  # reload after embed
 
     candidates: list[dict[str, Any]] = []
+    launch_candidates: list[dict[str, Any]] = []
     if profile is not None and profile.get("embedding") is not None:
         candidates = await similarity_search(
             collection_name="tools_seed",
@@ -78,6 +94,21 @@ async def generate_recommendations(
             top_k=SIMILARITY_TOP_K,
             filters={"curation_status": "approved"},
         )
+        # F-PUB-6: parallel similarity_search over founder-launched tools.
+        # Returned in a separate `launches` slot, never commingled with
+        # the organic ranking. No gpt-5 ranker call — these surface
+        # by similarity score only.
+        try:
+            launch_candidates = await similarity_search(
+                collection_name="tools_founder_launched",
+                weaviate_class=TOOL_CLASS,
+                query_vector=profile["embedding"],
+                top_k=LAUNCH_TOP_K,
+                filters={"curation_status": "approved"},
+            )
+        except Exception as exc:
+            print(f"[recommendations] launch fan-in failed: {exc}")
+            launch_candidates = []
 
     candidate_score: dict[str, float] = {
         c["slug"]: _rank_score(i, len(candidates))
@@ -130,10 +161,22 @@ async def generate_recommendations(
             for c in candidates[:MAX_PICKS]
         ]
 
+    # F-PUB-6: project launch candidates into pick-shaped dicts.
+    launch_pick_dicts: list[dict[str, Any]] = [
+        {
+            "tool_slug": c["slug"],
+            "verdict": "try",
+            "reasoning": "New launch matched against your profile.",
+            "score": _rank_score(i, len(launch_candidates)),
+        }
+        for i, c in enumerate(launch_candidates[:LAUNCH_TOP_K])
+    ]
+
     now = _now()
     rec_doc = {
         "user_id": user_id,
         "picks": pick_dicts,
+        "launch_picks": launch_pick_dicts,
         "generated_at": now,
         "cache_expires_at": now + CACHE_TTL,
         "degraded": degraded,
@@ -149,9 +192,10 @@ async def _build_response(
     rec_doc: dict[str, Any], count: int, from_cache: bool, degraded: bool
 ) -> RecommendationsResponse:
     """Project a stored rec doc into RecommendationsResponse, hydrating
-    each pick with the current tool details from tools_seed. Tools that
-    have been rejected since the rec was cached are silently dropped
-    from the response."""
+    each pick with the current tool details. Organic picks come from
+    `tools_seed`; launch picks (F-PUB-6) come from
+    `tools_founder_launched`. Tools that have been rejected or removed
+    since the rec was cached are silently dropped."""
     picks = rec_doc.get("picks") or []
     items: list[RecommendationPick] = []
     for p in picks[:count]:
@@ -169,8 +213,27 @@ async def _build_response(
             )
         )
 
+    # F-PUB-6: hydrate launch picks from tools_founder_launched.
+    launch_picks_raw = rec_doc.get("launch_picks") or []
+    launch_items: list[RecommendationPick] = []
+    for p in launch_picks_raw[:count]:
+        tool_doc = await fl_find_by_slug(p["tool_slug"])
+        if tool_doc is None:
+            continue
+        if tool_doc.get("curation_status") != "approved":
+            continue
+        launch_items.append(
+            RecommendationPick(
+                tool=tool_to_card(tool_doc),
+                verdict=p["verdict"],
+                reasoning=p["reasoning"],
+                score=p["score"],
+            )
+        )
+
     return RecommendationsResponse(
         recommendations=items,
+        launches=launch_items,
         generated_at=rec_doc.get("generated_at") or _now(),
         from_cache=from_cache,
         degraded=degraded,

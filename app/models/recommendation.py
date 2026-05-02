@@ -32,9 +32,17 @@ class RecommendationPick(BaseModel):
 
 
 class RecommendationsResponse(BaseModel):
-    """Response body for POST /api/recommendations."""
+    """Response body for POST /api/recommendations.
+
+    Per F-REC-5 MODIFIED by cycle #9: gains a `launches` field for
+    threshold-gated founder-launched picks (see F-PUB-6). The two
+    arrays are NEVER commingled — organic recommendations are
+    ranked by gpt-5; launches are surfaced by similarity score
+    only, never moving the organic ranking signal.
+    """
 
     recommendations: list[RecommendationPick]
+    launches: list[RecommendationPick] = []
     generated_at: datetime
     from_cache: bool
     degraded: bool = False

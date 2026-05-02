@@ -14,6 +14,7 @@ from app.db.launches import find_by_id, list_for_admin, update_resolution
 from app.db.notifications import insert as insert_notification
 from app.db.tools_founder_launched import insert as insert_fl_tool
 from app.db.users import find_user_by_id
+from app.launches.publish import publish_launch
 from app.launches.slug import derive_tool_slug, find_available_slug
 from app.models.launch import (
     LaunchAdminCard,
@@ -172,7 +173,21 @@ async def admin_approve(
         payload={"launch_id": str(oid), "tool_slug": slug},
     )
 
-    return to_launch_response(updated)
+    # F-PUB-2: synchronous publish (community posts + concierge nudges).
+    publish_summary: dict[str, int] = {
+        "community_posts_count": 0, "nudge_count": 0,
+    }
+    try:
+        publish_summary = await publish_launch(
+            launch_doc=updated, tool_slug=slug,
+        )
+    except Exception as exc:
+        # Defensive: the orchestrator already swallows per-step
+        # exceptions; an exception here means the orchestrator itself
+        # blew up. Log and return the launch as approved anyway.
+        print(f"[admin_launches] publish_launch raised: {exc}")
+
+    return to_launch_response(updated, publish_summary=publish_summary)
 
 
 @router.post("/{launch_id}/reject", response_model=LaunchResponse)

@@ -18,12 +18,15 @@ from app.api import answers as answers_router
 from app.api import auth as auth_router
 from app.api import comments as comments_router
 from app.api import communities as communities_router
+from app.api import concierge as concierge_router
 from app.api import founders as founders_router
 from app.api import me as me_router
 from app.api import onboarding as onboarding_router
 from app.api import posts as posts_router
 from app.api import questions as questions_router
 from app.api import recommendations as recommendations_router
+from app.api import redirect as redirect_router
+from app.api import tools as tools_router
 from app.api import votes as votes_router
 from app.db.answers import ensure_indexes as ensure_answer_indexes
 from app.db.comments import ensure_indexes as ensure_comment_indexes
@@ -195,6 +198,9 @@ app.include_router(comments_router.router)
 app.include_router(votes_router.router)
 app.include_router(founders_router.router)
 app.include_router(admin_launches_router.router)
+app.include_router(redirect_router.router)
+app.include_router(tools_router.router)
+app.include_router(concierge_router.router)
 
 
 @app.get("/health")

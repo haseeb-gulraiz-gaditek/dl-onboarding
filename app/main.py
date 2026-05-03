@@ -20,13 +20,16 @@ from app.api import comments as comments_router
 from app.api import communities as communities_router
 from app.api import concierge as concierge_router
 from app.api import founders as founders_router
+from app.api import launches_browse as launches_browse_router
 from app.api import me as me_router
+from app.api import me_tools as me_tools_router
 from app.api import onboarding as onboarding_router
 from app.api import posts as posts_router
 from app.api import questions as questions_router
 from app.api import recommendations as recommendations_router
 from app.api import redirect as redirect_router
 from app.api import tools as tools_router
+from app.api import tools_browse as tools_browse_router
 from app.api import votes as votes_router
 from app.db.answers import ensure_indexes as ensure_answer_indexes
 from app.db.comments import ensure_indexes as ensure_comment_indexes
@@ -50,6 +53,7 @@ from app.db.tools_founder_launched import (
     ensure_indexes as ensure_tools_fl_indexes,
 )
 from app.db.tools_seed import ensure_indexes as ensure_tools_seed_indexes
+from app.db.user_tools import ensure_indexes as ensure_user_tools_indexes
 from app.db.users import ensure_indexes as ensure_user_indexes
 from app.db.votes import ensure_indexes as ensure_vote_indexes
 from app.embeddings.vector_store import close_weaviate_client
@@ -98,6 +102,7 @@ async def lifespan(app: FastAPI):
     await ensure_tools_fl_indexes()
     await ensure_notification_indexes()
     await ensure_engagement_indexes()
+    await ensure_user_tools_indexes()
     try:
         yield
     finally:
@@ -207,6 +212,9 @@ app.include_router(admin_launches_router.router)
 app.include_router(redirect_router.router)
 app.include_router(tools_router.router)
 app.include_router(concierge_router.router)
+app.include_router(me_tools_router.router)
+app.include_router(tools_browse_router.router)
+app.include_router(launches_browse_router.router)
 
 
 @app.get("/health")

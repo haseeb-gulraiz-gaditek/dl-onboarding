@@ -39,19 +39,6 @@ MAX_PICKS = 5
 LAUNCH_TOP_K = 5  # F-PUB-6: top-5 launches by similarity, no floor
 
 
-async def _find_tool_anywhere(slug: str) -> dict[str, Any] | None:
-    """Resolve a slug across BOTH tool collections. Used when projecting
-    cached picks/launch_picks back into the response (F-PUB-6).
-
-    Order matters: tools_seed first (the constitutional invariant from
-    cycle #3 keeps source!='founder_launch' there), then
-    tools_founder_launched."""
-    doc = await find_tool_by_slug(slug)
-    if doc is not None:
-        return doc
-    return await fl_find_by_slug(slug)
-
-
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 

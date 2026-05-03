@@ -12,6 +12,7 @@ from app.auth.middleware import require_role
 from app.db.answers import insert_answer
 from app.db.profiles import get_or_create_profile, touch_invalidated
 from app.db.questions import find_question_by_id
+from app.me.auto_populate_tools import auto_populate_from_answer
 from app.models.answer import AnswerCreate, validate_answer_value
 from app.models.question import NextQuestionResponse
 
@@ -48,5 +49,15 @@ async def submit_answer(
         value=payload.value,
     )
     await touch_invalidated(user["_id"])
+
+    # F-TOOL-7 (cycle #10): best-effort auto-populate user_tools when
+    # the answer is a multi_select with slug-valued options that
+    # resolve in either tool collection. Failures here NEVER abort
+    # the answer-write.
+    await auto_populate_from_answer(
+        user_id=user["_id"],
+        question_doc=question,
+        answer_value=payload.value,
+    )
 
     return await compute_next_question(user)

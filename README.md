@@ -69,6 +69,41 @@ dl-onboarding/
 
 ---
 
+## Mesh dev (this venture)
+
+This fork is building **Mesh** — a context-graph launch platform for AI tools. Two-process layout (cycle #13):
+
+```
+dl-onboarding/
+├── app/                # FastAPI backend (Python 3.11+, Mongo, Weaviate)
+└── frontend/           # Next.js 14 + React 18 + TypeScript
+```
+
+**Run both** (two terminals):
+
+```bash
+# 1. Backend on :8000
+source venv/bin/activate
+python -m uvicorn app.main:app --reload --port 8000
+
+# 2. Frontend on :3000
+cd frontend
+npm install            # first time only
+npm run dev
+```
+
+Or via the convenience script: `bash scripts/dev.sh` (runs both with shared trap).
+
+**Env:**
+- Backend reads `app/.env` (copy from `.env.example`); set `CORS_ORIGINS=http://localhost:3000` for local dev.
+- Frontend reads `frontend/.env.local` (copy from `.env.local.example`); set `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`.
+
+**Demo flow:** open `http://localhost:3000` → land → `/onboarding` → tap-question loop → `/home`.
+
+`app/` is NOT renamed to `backend/` — kept stable to avoid touching 200+ imports + every test + the seed CLI + cycle archives. The asymmetry is documented; the two packages stay independent.
+
+---
+
 ## Why this shape
 
 - **Fork and build something real.** Reading about SDD/VKF teaches you nothing. Shipping one small feature through a full cycle teaches you everything. Solo is fine; pairs are better; teams of 3 max.

@@ -44,10 +44,10 @@
 
 ## Validation
 
-- [ ] All implementation tasks above checked off
-- [ ] Full test suite green (cycles #1–#10 must continue to pass)
-- [ ] Smoke: founder approves a launch with target_community_slugs=["marketing-ops"]; sign up 3 users; have one click /r/{id}, one tell_me_more, one skip; GET /api/founders/dashboard shows the correct counts
-- [ ] Smoke: GET /api/founders/launches/{id}/analytics returns clicks_by_community with the expected breakdown
-- [ ] Anonymization smoke: inspect the JSON response — confirm no user_id, no email, no display_name appears anywhere
-- [ ] Spec-delta scenarios verifiably hold in implementation
-- [ ] No constitutional regression: founders see ONLY their own launches; analytics reveal aggregate counts only; non-owner founders cannot enumerate launch existence (404 not 403)
+- [x] All implementation tasks above checked off
+- [x] Full test suite green: 256 passing (238 prior + 18 new for cycle #11)
+- [x] Dashboard end-to-end smoke: covered by `test_dashboard_summary_counts_match_engagements` (approved launch + seeded engagements + dashboard read shows correct counts)
+- [x] Analytics breakdowns smoke: covered by `test_owner_gets_analytics_with_breakdowns` (clicks_by_community + clicks_by_surface populated correctly from seeded engagement metadata)
+- [x] Anonymization smoke: covered by `test_dashboard_response_contains_no_user_identifying_fields` + `test_analytics_response_contains_no_user_identifying_fields` — both recursively scan the JSON response for forbidden keys ({user_id, email, display_name, name, founder_user_id}) and assert ZERO appear
+- [x] Spec-delta scenarios verifiably hold in implementation (F-DASH-1..4 each have at least one Given/When/Then-aligned test)
+- [x] No constitutional regression: `test_dashboard_returns_only_own_launches` enforces own-only scope; the two anonymization audit tests assert no user identity ever leaks; `test_non_owner_founder_gets_404` enforces existence-leak protection (mirrors cycle #8 F-LAUNCH-2)

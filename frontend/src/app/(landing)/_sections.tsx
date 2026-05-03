@@ -33,10 +33,10 @@ export function Nav() {
           <a href="#founders">For founders</a>
         </div>
         <div className="m-nav-actions">
-          <Link href="/onboarding" className="m-nav-link">
+          <Link href="/login" className="m-nav-link">
             Sign in
           </Link>
-          <Link href="/onboarding">
+          <Link href="/signup">
             <MButton size="sm">Get started</MButton>
           </Link>
         </div>
@@ -103,15 +103,17 @@ export function Hero({
                 list of tools that fit — and a list of the loud ones to ignore.
               </p>
               <div className="m-hero-cta fade-up fade-up-d4">
-                <Link href="/onboarding">
+                <Link href="/signup?role=user">
                   <MButton size="lg" trailing="→">
                     Find my stack
                   </MButton>
                 </Link>
-                <MButton variant="ghost" size="lg">
-                  Watch the demo
-                </MButton>
-                <span className="mono m-hero-meta">3 minutes · no signup</span>
+                <Link href="/login">
+                  <MButton variant="ghost" size="lg">
+                    Sign in
+                  </MButton>
+                </Link>
+                <span className="mono m-hero-meta">3 minutes · email &amp; password</span>
               </div>
             </>
           ) : (
@@ -129,14 +131,16 @@ export function Hero({
                 already in.
               </p>
               <div className="m-hero-cta fade-up fade-up-d4">
-                <Link href="/founders">
+                <Link href="/signup?role=founder">
                   <MButton size="lg" trailing="→">
                     Launch on Mesh
                   </MButton>
                 </Link>
-                <MButton variant="ghost" size="lg">
-                  See sample analytics
-                </MButton>
+                <Link href="/login">
+                  <MButton variant="ghost" size="lg">
+                    Sign in
+                  </MButton>
+                </Link>
                 <span className="mono m-hero-meta">free during beta</span>
               </div>
             </>

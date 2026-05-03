@@ -138,10 +138,12 @@ export function FoundersSection() {
             against.
           </p>
           <div className="m-founders-cta">
-            <Link href="/founders">
+            <Link href="/signup?role=founder">
               <MButton>Launch on Mesh →</MButton>
             </Link>
-            <MButton variant="quiet">See sample analytics</MButton>
+            <Link href="/login">
+              <MButton variant="quiet">Sign in</MButton>
+            </Link>
           </div>
         </div>
         <div
@@ -339,11 +341,11 @@ export function FinalCTA() {
             A stack that fits.
           </h2>
           <div className="m-final-cta-row">
-            <Link href="/onboarding">
+            <Link href="/signup?role=user">
               <MButton size="lg">Find my stack →</MButton>
             </Link>
             <span className="mono" style={{ color: "var(--ink-2)" }}>
-              signup at the end, if you want
+              email + password — 30 seconds
             </span>
           </div>
         </div>

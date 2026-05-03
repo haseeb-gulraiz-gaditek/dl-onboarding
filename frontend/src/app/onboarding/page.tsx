@@ -1,7 +1,11 @@
 "use client";
 
-// Mesh — Onboarding (signup + tap-question loop + result)
+// Mesh — Onboarding (tap-question loop + result).
 // Per spec-delta frontend-core F-FE-6.
+//
+// Authenticated user-role accounts only. Unauthenticated → redirect
+// to /signup. Founders → 403 from GET /api/questions/next, so we
+// redirect them to /home (their natural surface).
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -11,7 +15,7 @@ import { MButton, MeshMark } from "@/components/Primitives";
 import { ToolGraph } from "@/components/ToolGraph";
 
 import { api, ApiError } from "@/lib/api";
-import { signup as authSignup, isAuthenticated } from "@/lib/auth";
+import { isAuthenticated } from "@/lib/auth";
 import { tagsForAnswerValue } from "@/lib/tag-map";
 import type {
   AnswerCreateRequest,
@@ -24,125 +28,26 @@ import type {
 } from "@/lib/api-types";
 
 // =============================================================================
-// Page
+// Page — auth gate
 // =============================================================================
 export default function OnboardingPage() {
   const router = useRouter();
-  const [hasJwt, setHasJwt] = useState(false);
-  const [checkedAuth, setCheckedAuth] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    setHasJwt(isAuthenticated());
-    setCheckedAuth(true);
-  }, []);
+    if (!isAuthenticated()) {
+      router.replace("/signup");
+    } else {
+      setAuthChecked(true);
+    }
+  }, [router]);
 
-  if (!checkedAuth) return null;
-
-  return hasJwt ? <OnboardingTapLoop /> : <SignupPanel onDone={() => router.refresh()} />;
+  if (!authChecked) return null;
+  return <OnboardingTapLoop />;
 }
 
 // =============================================================================
-// Signup panel — first-time visitors
-// =============================================================================
-function SignupPanel({ onDone }: { onDone: () => void }) {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const submit = async () => {
-    if (!email || !password) {
-      setErr("Email and password are both required.");
-      return;
-    }
-    setErr(null);
-    setBusy(true);
-    try {
-      await authSignup({
-        email,
-        password,
-        role_question_answer: "finding_tools",
-      });
-      onDone();
-      router.refresh();
-    } catch (e) {
-      const msg =
-        e instanceof ApiError
-          ? (typeof e.body === "object" && e.body && "error" in e.body
-              ? String((e.body as { error: unknown }).error)
-              : "Signup failed.")
-          : "Signup failed.";
-      setErr(msg);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="onb-root">
-      <div className="onb-graph-pane">
-        <div className="onb-graph-canvas">
-          <ToolGraph progress={0.2} highlightedTags={[]} mode="hero" scale={1.4} />
-        </div>
-      </div>
-      <div className="onb-content-pane">
-        <header className="onb-header">
-          <Link href="/" className="onb-brand">
-            <MeshMark size={20} />
-            <span>Mesh</span>
-          </Link>
-        </header>
-        <div className="onb-q-wrap">
-          <div className="onb-q-card">
-            <h1 className="onb-q-title">Sign up to find your tools.</h1>
-            <p className="onb-q-sub">
-              30 seconds. No spam. Your answers stay yours.
-            </p>
-            <div className="founders-fields" style={{ marginTop: 24 }}>
-              <div className="founders-field">
-                <label className="founders-label mono">email</label>
-                <input
-                  className="m-input founders-input"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <div className="founders-field">
-                <label className="founders-label mono">password</label>
-                <input
-                  className="m-input founders-input"
-                  type="password"
-                  placeholder="at least 8 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submit()}
-                />
-              </div>
-            </div>
-            {err && (
-              <div className="mono" style={{ color: "var(--warn)", marginTop: 16 }}>
-                {err}
-              </div>
-            )}
-            <div className="onb-q-multi-foot" style={{ marginTop: 24 }}>
-              <span className="mono onb-q-skip">welcome to Mesh</span>
-              <MButton onClick={submit} variant="primary">
-                {busy ? "Creating…" : "Get started →"}
-              </MButton>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// Tap loop + result — authenticated
+// Tap loop + result — authenticated user-role
 // =============================================================================
 function OnboardingTapLoop() {
   const router = useRouter();
@@ -167,6 +72,14 @@ function OnboardingTapLoop() {
         } else {
           setQuestion(next.question);
         }
+      } catch (e) {
+        // Founder accounts get 403 role_mismatch from /api/questions/next
+        // (cycle #2 F-QB-5). Send them to /home where their inbox lives.
+        if (e instanceof ApiError && e.status === 403) {
+          router.replace("/home");
+          return;
+        }
+        console.error("[onboarding] question fetch failed", e);
       } finally {
         if (!cancelled) setLoading(false);
       }

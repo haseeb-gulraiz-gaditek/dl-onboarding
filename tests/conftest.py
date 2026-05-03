@@ -626,6 +626,33 @@ async def signup_founder_with_token(client, email: str = "frank@example.com") ->
     }
 
 
+# ---- Notification seeding helper (cycle: notifications-in-app) ----
+
+
+async def seed_notification(
+    *,
+    user_id,
+    kind: str,
+    payload: dict | None = None,
+    read: bool = False,
+) -> dict:
+    """Insert a notification row directly. Tests use this to construct
+    inbox fixtures without invoking publish_launch / admin approve."""
+    from datetime import datetime, timezone
+    from app.db.notifications import notifications_collection
+
+    doc = {
+        "user_id": user_id,
+        "kind": kind,
+        "payload": payload or {},
+        "read_at": datetime.now(timezone.utc) if read else None,
+        "created_at": datetime.now(timezone.utc),
+    }
+    result = await notifications_collection().insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return doc
+
+
 # ---- Engagement seeding helper (cycle: founder-dashboard-and-analytics) ----
 
 

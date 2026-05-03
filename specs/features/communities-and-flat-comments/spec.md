@@ -225,6 +225,8 @@ Validations:
 
 On insert: increments `posts.comment_count` and updates `posts.last_activity_at = now()`. Returns `201 Created` with the new comment.
 
+After persistence, the F-NOTIF-7 hook (cycle #12 MODIFIED) fires: when `comment.author_user_id != post.author_user_id`, a `community_reply` notification is written to the post's author with `payload = {post_id, comment_id, commenter_display_name}`. Self-replies (commenter == post author) are skipped — no notification. The hook is best-effort: any failure is logged and swallowed; the comment write is NEVER aborted. Response shape unchanged.
+
 `parent_comment_id` is silently set to `null` regardless of what the client sends (forward-compat for V1.5 threading; current schema rejects unknown body fields by Pydantic default but the route reads only the declared keys).
 
 **Founder caller** → `403 role_mismatch`.

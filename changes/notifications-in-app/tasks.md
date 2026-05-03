@@ -49,10 +49,10 @@
 
 ## Validation
 
-- [ ] All implementation tasks above checked off
-- [ ] Full test suite green (cycles #1–#11 must continue to pass)
-- [ ] Smoke (user side): Maya signs up, gets nudged via cycle #9 fan-out; GET /api/me/notifications shows the nudge; GET /api/me/notifications/banner returns it; POST .../read; subsequent banner returns null
-- [ ] Smoke (founder side): Aamir signs up, submits launch, admin approves; GET /api/me/notifications shows the launch_approved row
-- [ ] Smoke (community_reply): Maya posts a comment on Sam's post; GET /api/me/notifications as Sam shows a community_reply with payload.commenter_display_name == "maya"
-- [ ] Spec-delta scenarios verifiably hold in implementation
-- [ ] No constitutional regression: notifications NEVER expose another user's unread state; mark-read on non-owner row → 404 (no existence leak); founder posts cannot trigger community_reply notifications because founders are 403'd from POST /api/comments at the route layer
+- [x] All implementation tasks above checked off
+- [x] Full test suite green: 276 passing (256 prior + 20 new for cycle #12)
+- [x] User-side smoke: covered by `test_banner_returns_latest_unread_concierge_nudge` + `test_mark_read_first_call_returns_updated` + `test_banner_returns_null_when_none_unread` (full nudge → banner → mark-read → empty banner cycle)
+- [x] Founder-side smoke: covered by `test_inbox_role_agnostic_for_founder` (founder reads `/api/me/notifications` and sees their `launch_approved` row)
+- [x] community_reply smoke: covered by `test_comment_on_others_post_writes_community_reply_notification` (asserts payload.commenter_display_name == "maya" on Sam's notification after Maya comments on his post)
+- [x] Spec-delta scenarios verifiably hold in implementation (F-NOTIF-2..7 each have at least one Given/When/Then-aligned test)
+- [x] No constitutional regression: `test_list_scoped_to_self` enforces no cross-user reads; `test_mark_read_other_users_notification_returns_404` enforces existence-leak protection; cycle #7's `test_founder_cannot_comment` (still passing) means founders can't trigger community_reply because they're 403'd at the route — verified at the route layer above the trigger

@@ -8,13 +8,16 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: founder-dashboard-and-analytics
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-03T16:00:00+05:00"
-  tracker_ref: "backlog:11"
-  base_branch: main
-  branch_name: founder-dashboard-and-analytics
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
+  - slug: founder-dashboard-and-analytics
+    completed: "2026-05-03"
+    summary: "Read-only founder dashboard + per-launch analytics. Two GET endpoints behind require_role(founder): /api/founders/dashboard (own launches with inline matched/tell_me_more/skip/total_clicks), /api/founders/launches/{id}/analytics (per-launch detail with clicks_by_community + clicks_by_surface, ownership-gated 404 to prevent existence enumeration). Five aggregation helpers in app/founders/analytics.py — distinct-user counts via $group on user_id then collapse, scoped by launch_id, all return typed zeros on empty. NO new collections, NO Celery — synchronous MongoDB aggregation pipelines. Anonymization enforced at three layers: schema (no user-identity fields), helper ($group then collapse), test (recursive forbidden-key audit). 18 tests; full suite 256 green. Three new learnings: three-layer anonymization pattern; read-only cycles as a legitimate tight scope; private-to-owner-read 404-not-403 pattern formalized."
   - slug: my-tools-explore-new-tabs
     completed: "2026-05-03"
     summary: "/tools page backing across 3 tabs. New user_tools collection with source-precedence rule baked into upserts (explicit_save never demoted). Six endpoints behind require_role(user): POST/DELETE/PATCH/GET /api/me/tools (mine), GET /api/tools (explore — tools_seed only), GET /api/launches (new — default-filtered to joined communities; ?all=true escape hatch). Auto-populate hook on POST /api/answers fires only for multi_select with slug-valued options; resolves through both tool collections via the new shared find_tool_anywhere helper (which also replaces cycle #9's inline copy in engine.py). Constitutional separation enforced at the route layer: /api/tools sealed against tools_founder_launched, /api/launches sealed against tools_seed. 31 tests; full suite 238 green."

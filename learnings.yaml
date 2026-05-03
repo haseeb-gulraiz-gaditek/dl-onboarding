@@ -435,3 +435,43 @@ learnings:
       structure available, prefer the structured path; reach for
       LLM-as-classifier only when the structure runs out.
     category: process
+  - date: 2026-05-03
+    cycle: "founder-dashboard-and-analytics"
+    insight: |
+      Anonymization invariants are best enforced at three layers,
+      not one: schema (the response model has no field that could
+      hold a user identity), helper (aggregations $group by user_id
+      then collapse — never project), test (recursive scan of the
+      JSON response for forbidden keys with a clear list). Layer 3
+      catches future regressions automatically: any new field added
+      to the response that names a user will fail the audit test
+      without human review. Pattern reusable for any "aggregate-but-
+      never-identify" surface.
+    category: testing
+  - date: 2026-05-03
+    cycle: "founder-dashboard-and-analytics"
+    insight: |
+      Read-only cycles are a legitimate and tight scope. No new
+      collections, no new write paths, no schema changes — purely
+      read aggregations against an existing event log. The cycle
+      shipped in 2 commits + 2 spec/archive commits and added 18
+      tests. When the upstream data is good (engagements row per
+      meaningful action, well-indexed), analytics endpoints are a
+      30-line endpoint + a 50-line helper module + tests. Pattern:
+      keep the source-of-truth event log clean, defer analytics to
+      a separate read-only cycle, get speed AND clean separation.
+    category: process
+  - date: 2026-05-03
+    cycle: "founder-dashboard-and-analytics"
+    insight: |
+      Existence-leak protection (404 instead of 403) is now a
+      pattern across three cycles (#8 founder launches, #11
+      analytics, plus implicit elsewhere). When a non-owner tries
+      to read another founder's resource, return 404, not 403.
+      403 confirms the resource exists; 404 doesn't. Worth
+      formalizing as a "private-to-owner read" pattern: ownership
+      check fails → 404 with the same error code as a missing
+      resource. Used the same `launch_not_found` error string so
+      the founder can't even tell from the error code whether
+      they typed a wrong id or hit someone else's launch.
+    category: architecture

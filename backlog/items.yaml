@@ -368,10 +368,11 @@ items:
   - id: 11
     summary: "founder-dashboard-and-analytics"
     priority: medium
-    status: in_progress
+    status: done
     added: 2026-04-27
     promoted_to_cycle: "founder-dashboard-and-analytics"
     promoted_at: "2026-05-03"
+    completed_at: "2026-05-03"
     notes: |
       /founders/dashboard with launch list + per-launch
       /founders/launch/:id/analytics view.

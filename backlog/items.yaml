@@ -428,8 +428,10 @@ items:
   - id: 13
     summary: "frontend-core"
     priority: high
-    status: queued
+    status: in_progress
     added: 2026-05-03
+    promoted_to_cycle: "frontend-core"
+    promoted_at: "2026-05-03"
     notes: |
       Demo-day primary frontend path. Wires the 5 highest-value
       screens against the existing API surface, plus one tiny

@@ -8,13 +8,16 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: my-tools-explore-new-tabs
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-03T14:00:00+05:00"
-  tracker_ref: "backlog:10"
-  base_branch: main
-  branch_name: my-tools-explore-new-tabs
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
+  - slug: my-tools-explore-new-tabs
+    completed: "2026-05-03"
+    summary: "/tools page backing across 3 tabs. New user_tools collection with source-precedence rule baked into upserts (explicit_save never demoted). Six endpoints behind require_role(user): POST/DELETE/PATCH/GET /api/me/tools (mine), GET /api/tools (explore — tools_seed only), GET /api/launches (new — default-filtered to joined communities; ?all=true escape hatch). Auto-populate hook on POST /api/answers fires only for multi_select with slug-valued options; resolves through both tool collections via the new shared find_tool_anywhere helper (which also replaces cycle #9's inline copy in engine.py). Constitutional separation enforced at the route layer: /api/tools sealed against tools_founder_launched, /api/launches sealed against tools_seed. 31 tests; full suite 238 green."
   - slug: launch-publish-and-concierge-nudge
     completed: "2026-05-03"
     summary: "Activates the C2 amendment from cycle #8. Three new endpoints (GET /r/{id} unauth redirect with HMAC user-hash; GET /api/tools/{slug} canonical product page reading both tool collections; POST /api/concierge/respond for tell_me_more/skip on nudges). Three modified endpoints (POST /api/founders/launch gains target_community_slugs 1..6 required; POST /admin/launches/{id}/approve triggers publish_launch orchestrator; POST /api/recommendations gains launches[] slot). Synchronous publish_launch runs 5 steps in admin approve: embed ICP, embed founder-launched tool, fan out posts to all target communities (attached_launch_id set), scan profiles for top-5 by similarity → concierge_nudge notifications + cache bust, return summary. Per-step exceptions logged and swallowed. Recommendation engine runs parallel similarity_search over tools_founder_launched (top-5, no LLM ranker call — keeps the 'founder payments never move organic ranking' invariant intact via separate ranking pass). New engagements collection (CPA-ready event log; write-only in V1). 22 tests; full suite 207 green. Three learnings (third monkey-patch site for embed_text, sync orchestrator pattern with bounded fan-out, constitutional test pattern asserting structural separation)."

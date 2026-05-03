@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.middleware import require_role
 from app.db.comments import insert as insert_comment
+from app.db.notifications import insert as insert_notification
 from app.db.posts import bump_comment_count, find_by_id as find_post_by_id
 from app.models.comment import CommentCreateRequest, CommentCreateResponse
 from app.models.post import CommentCard, PostAuthor
@@ -58,6 +59,23 @@ async def create_comment(
         post_id=post_oid, author_user_id=user["_id"], body_md=body
     )
     await bump_comment_count(post_oid, 1)
+
+    # F-NOTIF-7 (cycle #12): community_reply notification on
+    # someone-else's-post comment. Best-effort — never aborts the
+    # comment write. Self-replies skipped.
+    if post["author_user_id"] != user["_id"]:
+        try:
+            await insert_notification(
+                user_id=post["author_user_id"],
+                kind="community_reply",
+                payload={
+                    "post_id": str(post_oid),
+                    "comment_id": str(comment_doc["_id"]),
+                    "commenter_display_name": user.get("display_name", ""),
+                },
+            )
+        except Exception as exc:
+            print(f"[comments] community_reply notification failed: {exc}")
 
     return CommentCreateResponse(
         comment=CommentCard(

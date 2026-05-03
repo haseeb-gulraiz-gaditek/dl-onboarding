@@ -626,6 +626,30 @@ async def signup_founder_with_token(client, email: str = "frank@example.com") ->
     }
 
 
+# ---- Engagement seeding helper (cycle: founder-dashboard-and-analytics) ----
+
+
+async def seed_engagement(
+    *,
+    launch_id,
+    surface: str,
+    action: str,
+    user_id=None,
+    metadata: dict | None = None,
+) -> None:
+    """Insert a single engagements row directly. Tests use this to
+    construct varied analytics fixtures without going through publish_launch."""
+    from app.db.engagements import insert as insert_engagement
+
+    await insert_engagement(
+        launch_id=launch_id,
+        surface=surface,
+        action=action,
+        user_id=user_id,
+        metadata=metadata or {},
+    )
+
+
 async def submit_test_launch(client, token: str, **overrides) -> dict:
     """POST /api/founders/launch with sane defaults; returns the parsed
     response body. NOTE: callers must ensure `seed_test_communities`

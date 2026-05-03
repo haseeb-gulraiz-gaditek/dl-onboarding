@@ -337,8 +337,10 @@ items:
   - id: 10
     summary: "my-tools-explore-new-tabs"
     priority: medium
-    status: queued
+    status: in_progress
     added: 2026-04-27
+    promoted_to_cycle: "my-tools-explore-new-tabs"
+    promoted_at: "2026-05-03"
     notes: |
       The /tools page with three tabs (NEW from updated system_design
       v0.2):

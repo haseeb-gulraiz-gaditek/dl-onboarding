@@ -1,6 +1,7 @@
 """Pydantic shapes for the communities endpoints.
 
 Per spec-delta communities-and-flat-comments F-COM-1, F-COM-2.
+Plus F-FE-2 (cycle #13) — JoinedCommunityCard for /api/me/communities.
 """
 from datetime import datetime
 from typing import Any, Literal
@@ -49,4 +50,37 @@ def to_community_card(doc: dict[str, Any]) -> CommunityCard:
         description=doc["description"],
         category=doc["category"],
         member_count=doc.get("member_count", 0),
+    )
+
+
+# ---- F-FE-2 (cycle #13) ----
+
+
+class JoinedCommunityCard(BaseModel):
+    """CommunityCard + the requesting user's joined_at timestamp."""
+
+    id: str
+    slug: str
+    name: str
+    description: str
+    category: CommunityCategory
+    member_count: int
+    joined_at: datetime
+
+
+class JoinedCommunityListResponse(BaseModel):
+    communities: list[JoinedCommunityCard]
+
+
+def to_joined_community_card(
+    community_doc: dict[str, Any], joined_at: datetime
+) -> JoinedCommunityCard:
+    return JoinedCommunityCard(
+        id=str(community_doc["_id"]),
+        slug=community_doc["slug"],
+        name=community_doc["name"],
+        description=community_doc["description"],
+        category=community_doc["category"],
+        member_count=community_doc.get("member_count", 0),
+        joined_at=joined_at,
     )

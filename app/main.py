@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import admin_catalog as admin_catalog_router
@@ -23,6 +24,7 @@ from app.api import founders as founders_router
 from app.api import founders_dashboard as founders_dashboard_router
 from app.api import launches_browse as launches_browse_router
 from app.api import me as me_router
+from app.api import me_communities as me_communities_router
 from app.api import me_notifications as me_notifications_router
 from app.api import me_tools as me_tools_router
 from app.api import onboarding as onboarding_router
@@ -117,6 +119,23 @@ app = FastAPI(
     description="Context-graph launch platform for AI tools.",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+
+# F-FE-3: CORS for the browser frontend (cycle #13).
+# CORS_ORIGINS is comma-separated; default to localhost:3000 for dev.
+# In prod, set CORS_ORIGINS to the deployed frontend URL.
+_cors_origins = [
+    o.strip() for o in os.environ.get(
+        "CORS_ORIGINS", "http://localhost:3000"
+    ).split(",") if o.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -219,6 +238,7 @@ app.include_router(tools_browse_router.router)
 app.include_router(launches_browse_router.router)
 app.include_router(founders_dashboard_router.router)
 app.include_router(me_notifications_router.router)
+app.include_router(me_communities_router.router)
 
 
 @app.get("/health")

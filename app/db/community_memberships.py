@@ -86,3 +86,14 @@ async def remove(user_id: ObjectId, community_id: ObjectId) -> bool:
 async def find_for_user(user_id: ObjectId) -> list[dict[str, Any]]:
     cursor = community_memberships_collection().find({"user_id": user_id})
     return await cursor.to_list(length=None)
+
+
+async def find_for_user_sorted(user_id: ObjectId) -> list[dict[str, Any]]:
+    """F-FE-2: list memberships newest-first by joined_at for the
+    /api/me/communities endpoint."""
+    from pymongo import DESCENDING
+
+    cursor = community_memberships_collection().find(
+        {"user_id": user_id}
+    ).sort([("joined_at", DESCENDING), ("_id", DESCENDING)])
+    return await cursor.to_list(length=None)

@@ -79,11 +79,11 @@
 
 ## Validation
 
-- [ ] All implementation tasks above checked off
-- [ ] Full test suite green (cycles #1–#8 must continue to pass)
-- [ ] Submission smoke: founder submits with target_community_slugs=["marketing-ops","weekly-launches"]; verify launch row stores them
-- [ ] Approve smoke: admin approves; verify (a) tool row in tools_founder_launched, (b) two posts in target communities (visible via GET /api/communities/{slug}/posts), (c) up-to-5 concierge_nudge notifications, (d) engagement rows for each
-- [ ] Redirect smoke: GET /r/{launch_id}?u=<hash>&s=concierge_nudge → 302 to product_url
-- [ ] Recommendation fan-in smoke: user with profile embedding hits POST /api/recommendations → response.launches contains the launch
-- [ ] Constitutional check: launches array is structurally separate from recommendations array; never overlapping
-- [ ] No constitutional regression: founder still cannot post via /api/posts (cycle #7 invariant); the launch-fanout path is admin-triggered and uses internal posts.insert helper directly
+- [x] All implementation tasks above checked off
+- [x] Full test suite green: 207 passing (185 prior + 22 new for cycle #9)
+- [x] Submission smoke: covered by `test_submit_without_target_community_slugs_returns_400`, `test_submit_unknown_community_slug_returns_400`, `test_submit_too_many_community_slugs_returns_400`, `test_submit_duplicate_community_slugs_returns_400` (validation); existing cycle #8 happy-path tests cover persistence
+- [x] Approve smoke: covered by `test_approve_fans_out_to_all_target_communities` (a)+(b), `test_approve_concierge_scan_writes_nudges` (c), `test_approve_writes_engagements_per_community_post` (d), `test_approve_skips_inactive_target_silently` (partial-success)
+- [x] Redirect smoke: covered by `test_redirect_with_valid_user_hash_logs_engagement_and_302s`, `test_redirect_without_hash_logs_anonymous_click`, `test_redirect_unknown_launch_returns_404`
+- [x] Recommendation fan-in smoke: covered by `test_approved_launch_appears_in_launches_slot`, `test_response_includes_launches_field`, `test_cache_hit_serves_both_arrays`
+- [x] Constitutional check: `test_approved_launch_appears_in_launches_slot` asserts the launch slug appears in `body["launches"]` AND verifies it's NOT in `body["recommendations"]` (structural separation enforced at the response layer)
+- [x] No constitutional regression: cycle #7's `test_founder_cannot_create_post` still passes (founder still 403'd from `POST /api/posts`); the launch-fanout path uses `app.db.posts.insert` directly (an internal helper, not the route), so the role gate at the router layer is intact

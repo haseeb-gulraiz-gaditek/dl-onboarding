@@ -114,6 +114,15 @@ The cache stores **up to 5 picks** regardless of the count of the call that gene
     }
     // ...up to `count` items
   ],
+  "launches": [
+    {
+      "tool": { ... },                          // shape matches `recommendations[].tool`
+      "verdict": "try",
+      "reasoning": "New launch matched against your profile.",
+      "score": 0.84
+    }
+    // ...up to LAUNCH_TOP_K (5) items
+  ],
   "generated_at": "2026-05-02T12:34:56Z",
   "from_cache": false,
   "degraded": false
@@ -121,6 +130,8 @@ The cache stores **up to 5 picks** regardless of the count of the call that gene
 ```
 
 Recommendations are returned in `score`-descending order. `OnboardingToolCard` is reused (cycle #5 schema) — only user-facing tool fields, no internal state.
+
+> **`launches` field added by cycle #9 (F-PUB-6).** Surfaces founder-launched tools that match the profile by similarity. Always present; empty list when no launches qualify. STRUCTURALLY SEPARATE from `recommendations` — the two arrays NEVER share entries. Organic recs are ranked by gpt-5; launches are surfaced by similarity score only (no ranker call). This separation enforces the constitutional principle "Founder payments never move an organic ranking score" — launches and organics are never in the same ranking pass.
 
 ---
 
@@ -138,7 +149,10 @@ A MongoDB collection `recommendations` stores per-user cached results.
       reasoning: <string>,
       score: <float>
     },
-    ... up to 5 picks
+    ... up to 5 organic picks
+  ],
+  launch_picks: [                  // added by cycle #9 (F-PUB-6); same shape as picks
+    { ... up to 5 launch picks }
   ],
   generated_at: <datetime>,
   cache_expires_at: <datetime>,  // = generated_at + 7 days
@@ -146,7 +160,9 @@ A MongoDB collection `recommendations` stores per-user cached results.
 }
 ```
 
-Unique index on `user_id`: one cached row per user. Upsert on regeneration replaces the entire document.
+Unique index on `user_id`: one cached row per user. Upsert on regeneration replaces the entire document. Both `picks` and `launch_picks` are regenerated together on a cache miss.
+
+> **Cache-bust on launch publish (cycle #9 F-PUB-2 step 4):** when an admin approves a launch, the publish orchestrator scans profiles for top-5 matches and bumps `cache_expires_at = now()` for each matched user, so their next `POST /api/recommendations` call regenerates with the new launch in the `launches` slot. The slug is in `launch_picks` of the regenerated row.
 
 ---
 

@@ -52,6 +52,7 @@ A new MongoDB collection `launches` stores founder submissions. Schema:
   problem_statement: string (1..280 chars),
   icp_description: string (1..500 chars),
   existing_presence_links: [string] (0..6 entries, each http(s)),
+  target_community_slugs: [string] (1..6 active community slugs),  // added by cycle #9 (F-PUB)
   verification_status: "pending" | "approved" | "rejected",
   rejection_comment: string | null,
   reviewed_by: string | null,                  // admin email
@@ -70,6 +71,7 @@ Validations:
 - `problem_statement`: 1..280 chars after strip. Empty → 400 `field_required` field=`problem_statement`.
 - `icp_description`: 1..500 chars after strip. Empty → 400 `field_required` field=`icp_description`.
 - `existing_presence_links`: optional list, max 6 entries, each must be http(s). Invalid → 400 `field_invalid` field=`existing_presence_links`.
+- `target_community_slugs` (added by cycle #9): required, length 1..6, each slug must resolve to an active community, no duplicates. Length/duplicate violations → 400 `field_invalid` field=`target_community_slugs`. Unknown slug → 400 `community_not_found` field=`target_community_slugs`.
 
 **Given** an authenticated founder posts a valid body
 **When** they `POST /api/founders/launch`

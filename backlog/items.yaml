@@ -424,3 +424,163 @@ items:
         the notifications surface.
 
       Size: S. Depends on: #7, #9.
+
+  - id: 13
+    summary: "frontend-core"
+    priority: high
+    status: queued
+    added: 2026-05-03
+    notes: |
+      Demo-day primary frontend path. Wires the 5 highest-value
+      screens against the existing API surface, plus one tiny
+      backend addition that unblocks /home.
+
+      Stack (locked from scratch/mesh-app design):
+        Next.js 14 App Router, React 18, TypeScript, pure-CSS
+        token system (no Tailwind), canvas 2D animations.
+        OKLCH palette, Geist + Geist Mono + Newsreader fonts.
+
+      Setup:
+        - Init `frontend/` next to `app/` from the mesh-app template.
+          Move tokens.css, components.css, Primitives.tsx,
+          ToolGraph.tsx, CommunityGraph.tsx as-is.
+        - Typed API client with httpOnly JWT cookie + 401 redirect.
+        - Add CORS middleware to FastAPI for http://localhost:3000.
+        - Concurrent dev script (FastAPI + Next.js).
+
+      One small backend addition (the only API gap blocking demo):
+        - GET /api/me/communities — list the requesting user's
+          joined communities. Joins community_memberships +
+          communities by community_id. Behind require_role("user").
+          Used by /home left rail + center "your communities" rows.
+
+      Five wired routes:
+        - / landing — static port; CTA links to /onboarding
+        - /onboarding — signup form (POST /api/auth/signup with
+          role_question_answer="finding_tools") + tap-question
+          loop (GET /api/questions/next + POST /api/answers) +
+          live ToolGraph narrowing + result panel (POST
+          /api/recommendations) + community pills (GET
+          /api/communities). On Enter Mesh → /home.
+        - /home — three-column shell. Left rail: nav glyphs +
+          your stack list (GET /api/me/tools) + profile. Center:
+          greeting + nudge cards (GET /api/me/notifications,
+          frontend maps real kinds [concierge_nudge, launch_*,
+          community_reply] onto the design's UI taxonomy
+          [pattern/fresh/mod/skip]) + Fresh-for-you strip (POST
+          /api/recommendations — both organic + launches arrays
+          merged for V1) + Your Communities rows (GET
+          /api/me/communities, the new endpoint above). Right rail:
+          profile graph (canvas; no API) + activity feed
+          (HARDCODED for V1; documented as V1.5 gap).
+          Header: unread-count badge from cycle #12 banner endpoint.
+        - /founders/launch — 6-step form. Form maps to backend
+          schema:
+            name           → product name (display only; not
+                              persisted in launches schema)
+            oneliner       → problem_statement
+            category       → mapped into icp_description
+                              prefix
+            replaces       → existing_presence_links (URLs of
+                              competitors); mapped client-side
+            audience       → mapped into icp_description
+            pricing        → mapped into icp_description
+            pitch          → problem_statement (overrides oneliner
+                              if provided)
+            target_communities — picked separately from CommunityGraph
+              click selection (1..6 slugs)
+          POSTs once at end → /api/founders/launch (cycle #8).
+          Result page shows pending state + the picked
+          community pills.
+        - /p/[slug] — canonical product page wired to GET
+          /api/tools/{slug} (cycle #9 F-PUB-4). Renders unified
+          card + LaunchMeta when is_founder_launched=true.
+
+      Frontend adaptations (documented as code comments — no
+      backend changes):
+        - Activity feed → hardcoded list for V1
+        - Founder forecast chart → kept but labeled as
+          "predicted" (no real model behind it)
+        - "Pattern detected" / "Skip this one" nudge categories
+          → mapped from notification.kind + payload heuristics
+
+      Out of scope (cycle #14):
+        - /community room view, /concierge inbox, /tools tabs,
+          admin views, founder analytics dashboard, bell dropdown
+        - Multi-message concierge threads (V1.5)
+        - Reasoning trace bars (V1.5)
+        - ⌘K free-form concierge chat (V1.5)
+        - Sister rooms / room pulse / activity stream endpoints
+
+      Size: L. Depends on: #1, #2, #6, #7, #8, #9, #12.
+
+  - id: 14
+    summary: "frontend-secondary"
+    priority: medium
+    status: queued
+    added: 2026-05-03
+    notes: |
+      Polish + completeness pass. Wires the remaining design
+      surfaces against existing API + adds two minimal admin
+      pages. No new backend endpoints.
+
+      Routes added:
+        - /c/[slug] community room — hero + thread feed (GET
+          /api/communities/{slug}/posts) + compose (POST /api/posts)
+          + vote (POST /api/votes). Filter tabs (all/hot/verdicts/
+          auto) implemented client-side over the same feed.
+          Sister rooms computed client-side from category via
+          GET /api/communities. Room pulse sparkline + axis
+          breakdown + live readers HARDCODED for V1 (documented
+          gap; backend analytics deferred to V1.5). Room rules
+          hardcoded per slug (no schema field for rules in V1).
+        - /concierge inbox — three-column. Threads list = GET
+          /api/me/notifications. Conversation panel: each
+          notification renders as a SINGLE message (V1
+          simplification; the design's multi-message
+          opening/finding/evidence/recommendation/math thread
+          structure is deferred to V1.5 — would need a new
+          concierge_messages collection). Banner endpoint feeds
+          the most-recent unread surface. Reply: tell_me_more /
+          skip via POST /api/concierge/respond. Reasoning trace
+          right rail: generic per-kind copy ("matched on profile
+          similarity", "high signal in your cohort", etc.) — no
+          per-notification scoring exposed yet.
+        - /tools/mine, /tools/explore, /tools/new — tab pages
+          fully wired to cycle #10:
+            mine    → GET/POST/PATCH/DELETE /api/me/tools
+            explore → GET /api/tools (?category, ?label, ?q)
+            new     → GET /api/launches (?all toggle for the
+                       joined-community filter)
+        - /founders/dashboard + /founders/launches/[id]/analytics
+          — wired to cycle #11. Cards for each launch with the
+          inline summary metrics (matched/tell_me_more/skip/
+          total_clicks). Analytics view shows clicks_by_community
+          + clicks_by_surface as bar charts.
+        - /admin/launches — minimal table view of pending launches
+          + per-row approve / reject (with comment) wired to
+          cycle #8. Admin gate via require_admin (ADMIN_EMAILS).
+        - /admin/catalog — minimal table view of pending tools
+          + approve / reject wired to cycle #3.
+
+      Header bell:
+        - Notifications bell in the global header reads
+          GET /api/me/notifications/unread-count.
+        - On app open, GET /api/me/notifications/banner is
+          fetched; if non-null, surfaces the launch_match top
+          banner (dismissable → POST .../{id}/read).
+        - Bell click opens a dropdown with the recent
+          notifications list + read-all button.
+
+      Documented V1.5 gaps that stay hardcoded/mocked in this
+      cycle:
+        - Cross-user activity feed
+        - Sister-rooms endpoint
+        - Room pulse / axis-breakdown / live-readers analytics
+        - Multi-message concierge thread structure
+        - Per-notification reasoning trace scores
+        - Free-form concierge chat (⌘K)
+        - Notification preferences page
+        - Real launch reach forecast model
+
+      Size: M. Depends on: #3, #7, #8, #9, #10, #11, #12, #13.

@@ -8,13 +8,16 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: launch-publish-and-concierge-nudge
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-03T10:00:00+05:00"
-  tracker_ref: "backlog:9"
-  base_branch: main
-  branch_name: launch-publish-and-concierge-nudge
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
+  - slug: launch-publish-and-concierge-nudge
+    completed: "2026-05-03"
+    summary: "Activates the C2 amendment from cycle #8. Three new endpoints (GET /r/{id} unauth redirect with HMAC user-hash; GET /api/tools/{slug} canonical product page reading both tool collections; POST /api/concierge/respond for tell_me_more/skip on nudges). Three modified endpoints (POST /api/founders/launch gains target_community_slugs 1..6 required; POST /admin/launches/{id}/approve triggers publish_launch orchestrator; POST /api/recommendations gains launches[] slot). Synchronous publish_launch runs 5 steps in admin approve: embed ICP, embed founder-launched tool, fan out posts to all target communities (attached_launch_id set), scan profiles for top-5 by similarity → concierge_nudge notifications + cache bust, return summary. Per-step exceptions logged and swallowed. Recommendation engine runs parallel similarity_search over tools_founder_launched (top-5, no LLM ranker call — keeps the 'founder payments never move organic ranking' invariant intact via separate ranking pass). New engagements collection (CPA-ready event log; write-only in V1). 22 tests; full suite 207 green. Three learnings (third monkey-patch site for embed_text, sync orchestrator pattern with bounded fan-out, constitutional test pattern asserting structural separation)."
   - slug: founder-launch-submission-and-verification
     completed: "2026-05-02"
     summary: "Founder side opens. Three new collections (launches, tools_founder_launched, notifications) + 7 endpoints (3 founder, 4 admin). Submission via POST /api/founders/launch behind require_role(founder). Admin queue/approve/reject reuses cycle #3's require_admin (ADMIN_EMAILS). Approve derives slug from product URL host (kebab-cased, full TLD), scans both tool collections for collision, creates tools_founder_launched row with source='founder_launch'+is_founder_launched=true, atomic state transition via find_one_and_update on verification_status='pending'. Notifications collection writes launch_approved/rejected rows (cycle #11 builds inbox UI; SMTP deferred). Pre-cycle C2 amendment to principles.md We Always #3: launches MAY appear alongside organic recs in a separate slot, gated by match-quality threshold; cycle #9 implements the fan-in. 31 tests; full suite 185 green."

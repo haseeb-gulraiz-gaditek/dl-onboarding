@@ -345,3 +345,51 @@ learnings:
       before merging. Pattern: when impl-vs-spec drift surfaces,
       pick the truer answer and fix BOTH the test and the spec.
     category: testing
+  - date: 2026-05-03
+    cycle: "launch-publish-and-concierge-nudge"
+    insight: |
+      The cycle #6 monkey-patch lesson hit again, in a place I
+      didn't anticipate: app/launches/publish.py imported embed_text
+      directly via `from app.embeddings.openai import embed_text`,
+      so the autouse mock_openai_embed fixture (which patched the
+      ranker and lifecycle modules) didn't cover it. Three tests
+      passed in isolation but failed under the full suite — the
+      OpenAI 401 error in the captured stdout was the giveaway.
+      Pattern crystalizing: any new module that imports a mocked
+      symbol needs a third (or fourth or fifth) monkeypatch site.
+      Future-proofing idea: monkey-patch at the SOURCE module only
+      (`app.embeddings.openai.embed_text`) and have callers do
+      `from app.embeddings import openai; openai.embed_text(...)`.
+      Worth refactoring once the patch list grows past 3 sites.
+    category: testing
+  - date: 2026-05-03
+    cycle: "launch-publish-and-concierge-nudge"
+    insight: |
+      Synchronous orchestrators (no Celery) win for V1 admin
+      surfaces. publish_launch runs 5 steps inline inside the
+      approve route — embed ICP, embed founder tool, fan out N
+      community posts, scan profiles, write notifications + bump
+      caches. Worst case ~5s with the V1 user count. Two design
+      moves made this safe: (1) per-step exception handling that
+      logs and continues (partial success > rollback when the
+      operation is genuinely idempotent at the row level), and
+      (2) the fan-out is naturally bounded (≤6 communities, top-5
+      profiles). When (2) holds, sync is the right call. When
+      either bound grows, swap in a 202-Accepted pattern.
+    category: architecture
+  - date: 2026-05-03
+    cycle: "launch-publish-and-concierge-nudge"
+    insight: |
+      Constitutional amendments paired with structural test assertions
+      are stronger than either alone. The C2 amendment to We Always
+      #3 (cycle #8) said "launches MAY appear alongside organic recs
+      in a separate slot." Cycle #9's
+      test_approved_launch_appears_in_launches_slot doesn't just check
+      the launch is in `body["launches"]` — it ALSO asserts the slug
+      is NOT in `body["recommendations"]`. The test encodes the
+      principle: a future contributor merging the two arrays would
+      break the test, surfacing the principle breach during code
+      review rather than after a months-down-the-line audit. Pattern:
+      every constitutional invariant should have at least one test
+      that would fail if the invariant breaks.
+    category: testing

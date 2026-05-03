@@ -539,6 +539,34 @@ async def prepare_user_for_recs(client, email: str = "maya@example.com", n_answe
     return {"token": token, "user_id": user_id, "email": email}
 
 
+# ---- Tool-stack question fixture (cycle: my-tools-explore-new-tabs) ----
+
+
+@pytest_asyncio.fixture
+async def seed_tool_stack_question(app_client, seed_test_catalog):
+    """A multi_select question whose option values are slugs in the
+    seed test catalog. Used by F-TOOL-7 auto-populate tests."""
+    from app.db.questions import questions_collection
+
+    doc = {
+        "key": "stack.current_tools",
+        "text": "Which of these tools do you currently use?",
+        "kind": "multi_select",
+        "category": "stack",
+        "order": 5,
+        "is_core": True,
+        "active": True,
+        "version": 1,
+        "options": [
+            {"value": "test-tool-approved", "label": "Test Tool Approved"},
+            {"value": "test-tool-pending", "label": "Test Tool Pending"},
+            {"value": "not-in-catalog", "label": "Not in Catalog"},
+        ],
+    }
+    await questions_collection().insert_one(doc)
+    yield doc
+
+
 # ---- Communities fixtures (cycle: communities-and-flat-comments) ----
 
 

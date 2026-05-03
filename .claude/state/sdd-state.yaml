@@ -8,13 +8,16 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: notifications-in-app
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-03T18:00:00+05:00"
-  tracker_ref: "backlog:12"
-  base_branch: main
-  branch_name: notifications-in-app
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
+  - slug: notifications-in-app
+    completed: "2026-05-03"
+    summary: "In-app inbox over the existing notifications collection (no new collections). Five read endpoints behind current_user (role-agnostic): list with cursor pagination + unread_only filter, unread-count for the bell badge, dedicated banner endpoint for the most-recent unread concierge_nudge, idempotent mark-single (404 on non-owner — existence-leak protection), bulk read-all. New community_reply trigger on POST /api/comments (cycle #7 F-COM-5 MODIFIED): when commenter != post.author_user_id, write a notification with payload {post_id, comment_id, commenter_display_name}; self-replies skipped; trigger wrapped in try/except at the call site so the comment write is never aborted. Naming reconciliation: cycle #9's `concierge_nudge` is documented as synonymous with backlog's `launch_match` — no migration. `new_recommendation` and `system` kinds reserved but no V1 trigger. 20 tests; full suite 276 green."
   - slug: founder-dashboard-and-analytics
     completed: "2026-05-03"
     summary: "Read-only founder dashboard + per-launch analytics. Two GET endpoints behind require_role(founder): /api/founders/dashboard (own launches with inline matched/tell_me_more/skip/total_clicks), /api/founders/launches/{id}/analytics (per-launch detail with clicks_by_community + clicks_by_surface, ownership-gated 404 to prevent existence enumeration). Five aggregation helpers in app/founders/analytics.py — distinct-user counts via $group on user_id then collapse, scoped by launch_id, all return typed zeros on empty. NO new collections, NO Celery — synchronous MongoDB aggregation pipelines. Anonymization enforced at three layers: schema (no user-identity fields), helper ($group then collapse), test (recursive forbidden-key audit). 18 tests; full suite 256 green. Three new learnings: three-layer anonymization pattern; read-only cycles as a legitimate tight scope; private-to-owner-read 404-not-403 pattern formalized."

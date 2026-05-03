@@ -475,3 +475,47 @@ learnings:
       the founder can't even tell from the error code whether
       they typed a wrong id or hit someone else's launch.
     category: architecture
+  - date: 2026-05-03
+    cycle: "notifications-in-app"
+    insight: |
+      A dedicated read endpoint (banner) for a recurring filter
+      query beats client-side filtering when the UX is built
+      around it. The banner needs the most-recent unread
+      concierge_nudge — every app open. A list endpoint + client
+      filter would download everything just to show one card.
+      A dedicated endpoint is one indexed query per app open.
+      Pattern: when the same filter is fired from a hot UX path
+      (homepage, app open, route guard), give it a named
+      endpoint instead of a query param on the generic list.
+    category: architecture
+  - date: 2026-05-03
+    cycle: "notifications-in-app"
+    insight: |
+      Best-effort triggers should always be wrapped at the
+      site that calls them, not relied on inside the helper. The
+      F-NOTIF-7 hook in POST /api/comments wraps the
+      insert_notification call in try/except inside the route
+      handler. The notification helper itself can raise freely.
+      This keeps two invariants separate: (a) the comment write
+      always succeeds when the comment is valid, (b) the
+      notification system retains its strict error semantics for
+      callers that DO want to know about failures (e.g., the
+      founder dashboard showing a "delivery failed" indicator
+      in V1.5+). Don't bake "best effort" into low-level
+      helpers — bake it into the call site.
+    category: architecture
+  - date: 2026-05-03
+    cycle: "notifications-in-app"
+    insight: |
+      Naming reconciliation across cycles: when an early cycle
+      writes a kind/field with one name and a later backlog item
+      describes the same concept with a different name, prefer
+      keeping the earliest write name and document the synonym.
+      Cycle #9 wrote `concierge_nudge`; backlog #12 said
+      `launch_match`. Renaming would have meant a Mongo
+      migration on every existing row PLUS coordinated client
+      updates. The synonym path was zero work for the same
+      semantic clarity. Pattern: document name drift, don't
+      migrate it, unless the early name is wrong (not just
+      different).
+    category: process

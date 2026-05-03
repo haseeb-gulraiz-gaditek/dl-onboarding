@@ -69,6 +69,7 @@ V1 uses strict linear ordering by `questions.order`. Branching (`next_logic`) is
 
 **Then** the system appends a row to `answers` with `{user_id, question_id, value, is_typed_other: false, captured_at: now}`
 **And** updates `profile.last_invalidated_at = now`
+**And** runs the F-TOOL-7 auto-populate hook (cycle #10 MODIFIED): when the question is `multi_select` and each value resolves to a tool slug via `find_tool_anywhere`, one `user_tools` row is upserted per resolved tool with `source="auto_from_profile"`. The hook is best-effort — failures are logged and swallowed; the response shape and status code are unchanged.
 **And** returns the next-question payload (chained — no second round trip).
 
 `answers` is append-only — re-answering the same question creates a new row. The next-question algorithm treats any row in `answers` for a given question as "answered" and skips it.

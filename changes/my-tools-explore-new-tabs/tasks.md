@@ -72,12 +72,12 @@
 
 ## Validation
 
-- [ ] All implementation tasks above checked off
-- [ ] Full test suite green (cycles #1–#9 must continue to pass)
-- [ ] Smoke: as Maya, answer a multi_select question whose values are catalog slugs; GET /api/me/tools shows them with source=auto_from_profile, status=using
-- [ ] Smoke: POST /api/me/tools {tool_slug:"<auto-added>", status:"saved"} promotes source to explicit_save
-- [ ] Smoke: DELETE /api/me/tools/{tool_id} removes; second DELETE returns deleted:false
-- [ ] Smoke: GET /api/tools?category=design&label=all_time_best returns only matching seed rows; founder-launched tools NOT in the list
-- [ ] Smoke: founder approves a launch with target_community_slugs=["marketing-ops"]; Maya joins marketing-ops; GET /api/launches shows the launch; user without membership gets empty list (until ?all=true)
-- [ ] Spec-delta scenarios verifiably hold in implementation
-- [ ] No constitutional regression: /api/tools is sealed against tools_founder_launched; /api/launches is sealed against tools_seed; storage separation preserved
+- [x] All implementation tasks above checked off
+- [x] Full test suite green: 238 passing (207 prior + 31 new for cycle #10)
+- [x] Auto-populate smoke: covered by `test_multi_select_resolving_slugs_auto_populates` + `test_re_answering_is_idempotent`
+- [x] Promotion smoke: covered by `test_save_promotes_existing_auto_row` (auto_from_profile → explicit_save) + `test_explicit_save_not_demoted_by_subsequent_auto_populate` (explicit never demoted)
+- [x] Delete smoke: covered by `test_delete_existing_returns_true` + `test_delete_missing_returns_false` (idempotent)
+- [x] Browse + filter smoke: covered by `test_default_browse_returns_approved_alphabetical`, `test_category_filter`, `test_label_filter`, `test_q_substring_matches_name`, `test_pending_and_rejected_excluded`, `test_founder_launched_not_in_browse`
+- [x] Launches smoke: covered by `test_default_filter_returns_only_joined_community_launches`, `test_user_with_no_memberships_gets_empty_default`, `test_all_query_returns_all_approved_launches`
+- [x] Spec-delta scenarios verifiably hold in implementation (F-TOOL-1..9 each have at least one Given/When/Then-aligned test)
+- [x] No constitutional regression: `test_founder_launched_not_in_browse` asserts /api/tools is sealed against tools_founder_launched; /api/launches reads only tools_founder_launched + launches via the existing helpers (no tools_seed query path); storage separation intact

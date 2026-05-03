@@ -73,10 +73,12 @@ async function request<T>(
   }
 
   if (response.status === 401 && auth) {
-    // Token rejected → clear and redirect to onboarding.
+    // Token rejected (expired / invalid). Clear it and redirect
+    // to /login — the user already has an account, so /signup
+    // would be the wrong landing.
     clearJwt();
     if (typeof window !== "undefined") {
-      window.location.assign("/onboarding");
+      window.location.assign("/login");
     }
     throw new ApiError(401, parsed);
   }

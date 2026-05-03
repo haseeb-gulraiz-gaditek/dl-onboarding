@@ -99,7 +99,7 @@
 }
 
 .con-main-head {
-  display: flex; gap: 24px; align-items: end;
+  display: flex; gap: 24px; align-items: flex-end;
   padding-bottom: 28px;
   border-bottom: 1px solid var(--line-0);
   margin-bottom: 36px;

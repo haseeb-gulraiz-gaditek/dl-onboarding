@@ -3,25 +3,24 @@
 // Mesh — Login page.
 // Per spec-delta frontend-core F-FE-6 (revised).
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { MButton, MeshMark } from "@/components/Primitives";
 import { ToolGraph } from "@/components/ToolGraph";
-import { login as authLogin, isAuthenticated } from "@/lib/auth";
+import { login as authLogin } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 
+// /login deliberately does NOT auto-redirect signed-in users — they
+// might want to switch accounts. The /home page has a logout button
+// for the clean exit path.
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isAuthenticated()) router.replace("/home");
-  }, [router]);
 
   const submit = async () => {
     if (!email || !password) {

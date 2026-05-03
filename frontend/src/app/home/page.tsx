@@ -85,40 +85,58 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      router.replace("/onboarding");
+      router.replace("/login");
       return;
     }
     void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fail-soft loader. Sets `user` first as the gating call; every
+  // other panel degrades to its empty default if its endpoint fails
+  // (e.g., founders get 403 on user-only endpoints — they still see
+  // /home with their inbox + greeting).
   const loadAll = async () => {
+    let me: UserPublic;
     try {
-      const [me, uc, nl, r, mt, mc] = await Promise.all([
-        api.get<UserPublic>("/api/me"),
-        api.get<UnreadCountResponse>("/api/me/notifications/unread-count"),
-        api.get<NotificationListResponse>(
-          "/api/me/notifications?unread_only=false&limit=4",
-        ),
-        api.post<RecommendationsResponse>("/api/recommendations", { count: 5 }).catch(
-          (e) => {
-            // 400 no_profile_yet — user hasn't answered enough questions.
-            if (e instanceof ApiError && e.status === 400) return null;
-            throw e;
-          },
-        ),
-        api.get<UserToolListResponse>("/api/me/tools"),
-        api.get<JoinedCommunityListResponse>("/api/me/communities"),
-      ]);
-      setUser(me);
-      setUnread(uc.count);
-      setNotes(nl.notifications);
-      setRecs(r);
-      setTools(mt.tools);
-      setCommunities(mc.communities);
+      me = await api.get<UserPublic>("/api/me");
     } catch (e) {
-      console.error("[home] load failed", e);
+      console.error("[home] /api/me failed", e);
+      return; // 401 already handled by api.ts (redirects to /onboarding)
     }
+    setUser(me);
+
+    // Notifications + unread count work for both roles.
+    const [uc, nl] = await Promise.allSettled([
+      api.get<UnreadCountResponse>("/api/me/notifications/unread-count"),
+      api.get<NotificationListResponse>(
+        "/api/me/notifications?unread_only=false&limit=4",
+      ),
+    ]);
+    if (uc.status === "fulfilled") setUnread(uc.value.count);
+    if (nl.status === "fulfilled") setNotes(nl.value.notifications);
+
+    // User-role-only endpoints. Founders get 403 here; we silently
+    // skip without breaking the page.
+    if (me.role_type !== "user") return;
+
+    const [r, mt, mc] = await Promise.allSettled([
+      api.post<RecommendationsResponse>("/api/recommendations", { count: 5 }),
+      api.get<UserToolListResponse>("/api/me/tools"),
+      api.get<JoinedCommunityListResponse>("/api/me/communities"),
+    ]);
+    if (r.status === "fulfilled") {
+      setRecs(r.value);
+    } else if (
+      r.reason instanceof ApiError &&
+      r.reason.status === 400
+    ) {
+      // 400 no_profile_yet — user has <3 answers. Empty section is fine.
+    } else {
+      console.warn("[home] recommendations failed", r.reason);
+    }
+    if (mt.status === "fulfilled") setTools(mt.value.tools);
+    if (mc.status === "fulfilled") setCommunities(mc.value.communities);
   };
 
   if (!user) {

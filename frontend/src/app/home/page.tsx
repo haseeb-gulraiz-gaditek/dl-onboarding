@@ -8,7 +8,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { MeshMark } from "@/components/Primitives";
-import { ToolGraph } from "@/components/ToolGraph";
 
 import { api, ApiError } from "@/lib/api";
 import { isAuthenticated, logout } from "@/lib/auth";
@@ -24,16 +23,6 @@ import type {
   UserToolCard,
   UserToolListResponse,
 } from "@/lib/api-types";
-
-// V1 hardcoded activity feed — V1.5 backend builds the cross-user
-// activity stream endpoint.
-const ACTIVITY = [
-  { who: "Maya", role: "founder, Granola", what: "just shipped multi-language transcripts", when: "12m", dot: "warm" },
-  { who: "Theo", role: "in your community", what: "left Notion for Mem after 4 yrs", when: "2h", dot: "cool" },
-  { who: "Mesh", role: "concierge", what: "matched you to 2 new founders", when: "5h", dot: "pulse" },
-  { who: "Riya", role: "in r/staff-pms", what: 'asked: "anyone else find Linear too rigid?"', when: "1d", dot: "warm" },
-  { who: "Nico", role: "founder, Reflect", what: "is doing office hours next Thursday", when: "2d", dot: "cool" },
-];
 
 // Notification kind → design's nudge UI taxonomy.
 function nudgeKindFor(kind: string): "pattern" | "fresh" | "mod" | "skip" {
@@ -151,7 +140,7 @@ export default function HomePage() {
   const communityUnread = communities.length; // V1: unread per community is V1.5
 
   return (
-    <div className="home-root">
+    <div className="home-root no-right">
       <HomeLeftRail
         active={activeNav}
         onSelect={setActiveNav}
@@ -169,7 +158,6 @@ export default function HomePage() {
         recs={recs}
         communities={communities}
       />
-      <HomeRightRail user={user} />
     </div>
   );
 }
@@ -464,54 +452,10 @@ function FreshCard({
   );
 }
 
-// =============================================================================
-// Right rail
-// =============================================================================
-function HomeRightRail({ user }: { user: UserPublic }) {
-  // Profile graph: in V1 we just show a static set of common tags.
-  // V1.5 would derive from /api/me answers.
-  const tags = ["writing", "pm", "meetings", "ai", "productivity"];
-  return (
-    <aside className="home-rail home-rail-right">
-      <div className="home-rail-heading mono">Your profile graph</div>
-      <div className="home-mini-graph">
-        <ToolGraph
-          progress={1}
-          highlightedTags={tags}
-          mode="score"
-          gridSlots={5}
-          scale={0.85}
-        />
-      </div>
-      <div className="home-rail-tags">
-        {tags.map((t) => (
-          <span key={t} className="onb-graph-tag">
-            {t}
-          </span>
-        ))}
-      </div>
-      <Link href="/onboarding" className="mono home-rail-refine">
-        refine profile ↗
-      </Link>
-
-      <div className="home-rail-divider" />
-
-      <div className="home-rail-heading mono">Recent activity</div>
-      <div className="home-activity">
-        {ACTIVITY.map((a, i) => (
-          <div key={i} className="home-activity-row">
-            <span className={`home-act-dot dot-${a.dot}`} />
-            <div className="home-act-content">
-              <div className="home-act-text body-sm">
-                <span className="home-act-who">{a.who}</span>{" "}
-                <span className="home-act-role mono">— {a.role}</span>
-              </div>
-              <div className="home-act-what body-sm">{a.what}</div>
-              <div className="mono home-act-when">{a.when}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </aside>
-  );
-}
+// Right rail removed in cycle #13 audit pass:
+//   - "Your profile graph" used a hardcoded tag list
+//     (["writing","pm","meetings","ai","productivity"]) — no
+//     backend endpoint exposes per-user profile tags.
+//   - "Recent activity" was a hardcoded 5-row mock — no cross-user
+//     activity stream backend exists.
+// Both are V1.5 features (would need new backend endpoints).

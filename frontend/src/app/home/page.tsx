@@ -70,7 +70,6 @@ export default function HomePage() {
   const [recs, setRecs] = useState<RecommendationsResponse | null>(null);
   const [tools, setTools] = useState<UserToolCard[]>([]);
   const [communities, setCommunities] = useState<JoinedCommunityCard[]>([]);
-  const [activeNav, setActiveNav] = useState("home");
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -136,19 +135,13 @@ export default function HomePage() {
     );
   }
 
-  const stackSize = tools.length;
-  const communityUnread = communities.length; // V1: unread per community is V1.5
-
   return (
     <div className="home-root no-right">
       <HomeLeftRail
-        active={activeNav}
-        onSelect={setActiveNav}
         user={user}
         tools={tools}
         unread={unread}
-        stackSize={stackSize}
-        communityUnread={communityUnread}
+        communityCount={communities.length}
         onLogout={() => logout()}
       />
       <HomeCenter
@@ -166,32 +159,29 @@ export default function HomePage() {
 // Left rail
 // =============================================================================
 function HomeLeftRail({
-  active,
-  onSelect,
   user,
   tools,
   unread,
-  stackSize,
-  communityUnread,
+  communityCount,
   onLogout,
 }: {
-  active: string;
-  onSelect: (v: string) => void;
   user: UserPublic;
   tools: UserToolCard[];
   unread: number;
-  stackSize: number;
-  communityUnread: number;
+  communityCount: number;
   onLogout: () => void;
 }) {
-  const navItems = [
-    { id: "home", label: "Home", glyph: "◉", count: 0 },
-    { id: "nudges", label: "Nudges", glyph: "~", count: unread },
-    { id: "stack", label: "Your stack", glyph: "▦", count: stackSize },
-    { id: "discover", label: "Discover", glyph: "✦", count: 0 },
-    { id: "rooms", label: "Communities", glyph: "◌", count: communityUnread },
-    { id: "profile", label: "Profile", glyph: "◎", count: 0 },
-  ];
+  // Cycle #13 nav: only items that have a real destination on this
+  // cycle. Discover (/tools/explore), Profile, dedicated Communities
+  // route, and a separate Stack page all land in cycle #14.
+  // Each item here scrolls to a section that actually exists on the
+  // page; no "active state" toggle since clicks are jumps not filters.
+  const scrollTo = (id: string) => {
+    if (typeof document === "undefined") return;
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <aside className="home-rail home-rail-left">
       <div className="home-brand-row">
@@ -199,25 +189,41 @@ function HomeLeftRail({
           <MeshMark size={20} />
           <span>Mesh</span>
         </Link>
-        <button className="home-rail-collapse mono" title="Collapse">⟨</button>
       </div>
       <nav className="home-nav">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            className={`home-nav-item ${active === item.id ? "on" : ""}`}
-            onClick={() => onSelect(item.id)}
-          >
-            <span className="home-nav-glyph">{item.glyph}</span>
-            <span className="home-nav-label">{item.label}</span>
-            {item.count > 0 && (
-              <span className="home-nav-count mono">{item.count}</span>
-            )}
-          </button>
-        ))}
+        <button className="home-nav-item" onClick={() => scrollTo("home-top")}>
+          <span className="home-nav-glyph">◉</span>
+          <span className="home-nav-label">Home</span>
+        </button>
+        <button className="home-nav-item" onClick={() => scrollTo("home-nudges")}>
+          <span className="home-nav-glyph">~</span>
+          <span className="home-nav-label">Nudges</span>
+          {unread > 0 && <span className="home-nav-count mono">{unread}</span>}
+        </button>
+        <button className="home-nav-item" onClick={() => scrollTo("home-stack")}>
+          <span className="home-nav-glyph">▦</span>
+          <span className="home-nav-label">Your stack</span>
+          {tools.length > 0 && (
+            <span className="home-nav-count mono">{tools.length}</span>
+          )}
+        </button>
+        <button
+          className="home-nav-item"
+          onClick={() => scrollTo("home-communities")}
+        >
+          <span className="home-nav-glyph">◌</span>
+          <span className="home-nav-label">Communities</span>
+          {communityCount > 0 && (
+            <span className="home-nav-count mono">{communityCount}</span>
+          )}
+        </button>
+        <Link href="/onboarding" className="home-nav-item">
+          <span className="home-nav-glyph">◎</span>
+          <span className="home-nav-label">Refine profile</span>
+        </Link>
       </nav>
 
-      <div className="home-rail-section">
+      <div className="home-rail-section" id="home-stack">
         <div className="home-rail-heading mono">Your stack</div>
         <div className="home-stack-list">
           {tools.length === 0 && (
@@ -291,7 +297,7 @@ function HomeCenter({
 
   return (
     <main className="home-center">
-      <header className="home-center-header">
+      <header className="home-center-header" id="home-top">
         <div>
           <div className="mono home-eyebrow">/ home · today</div>
           <h1 className="home-greeting">
@@ -305,7 +311,7 @@ function HomeCenter({
         </div>
       </header>
 
-      <section className="home-section">
+      <section className="home-section" id="home-nudges">
         <div className="home-section-head">
           <h2 className="home-section-title">
             Nudges <span className="mono home-section-count">{notes.length}</span>
@@ -344,7 +350,7 @@ function HomeCenter({
         </section>
       )}
 
-      <section className="home-section">
+      <section className="home-section" id="home-communities">
         <div className="home-section-head">
           <h2 className="home-section-title">Your communities</h2>
         </div>

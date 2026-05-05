@@ -129,6 +129,18 @@ export interface UserToolListResponse {
   tools: UserToolCard[];
 }
 
+// ---- Profile summary (cycle #13 audit pass) ----
+
+export interface StackToolEntry {
+  value: string;
+  label: string;
+}
+
+export interface ProfileSummaryResponse {
+  stack_tools: StackToolEntry[];
+  all_answer_values: string[];
+}
+
 // ---- Notifications (cycle #12) ----
 
 export interface NotificationCard {

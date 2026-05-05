@@ -26,6 +26,7 @@ from app.api import launches_browse as launches_browse_router
 from app.api import me as me_router
 from app.api import me_communities as me_communities_router
 from app.api import me_notifications as me_notifications_router
+from app.api import me_profile_summary as me_profile_summary_router
 from app.api import me_tools as me_tools_router
 from app.api import onboarding as onboarding_router
 from app.api import posts as posts_router
@@ -239,6 +240,7 @@ app.include_router(launches_browse_router.router)
 app.include_router(founders_dashboard_router.router)
 app.include_router(me_notifications_router.router)
 app.include_router(me_communities_router.router)
+app.include_router(me_profile_summary_router.router)
 
 
 @app.get("/health")

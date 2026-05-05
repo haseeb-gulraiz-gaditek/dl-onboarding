@@ -8,20 +8,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { MeshMark } from "@/components/Primitives";
+import { ToolGraph } from "@/components/ToolGraph";
 
 import { api, ApiError } from "@/lib/api";
 import { isAuthenticated, logout } from "@/lib/auth";
+import { tagsForAnswerValue } from "@/lib/tag-map";
 import type {
   JoinedCommunityCard,
   JoinedCommunityListResponse,
   NotificationCard,
   NotificationListResponse,
+  ProfileSummaryResponse,
   RecommendationPick,
   RecommendationsResponse,
+  StackToolEntry,
   UnreadCountResponse,
   UserPublic,
-  UserToolCard,
-  UserToolListResponse,
 } from "@/lib/api-types";
 
 // Notification kind → design's nudge UI taxonomy.
@@ -68,7 +70,8 @@ export default function HomePage() {
   const [unread, setUnread] = useState(0);
   const [notes, setNotes] = useState<NotificationCard[]>([]);
   const [recs, setRecs] = useState<RecommendationsResponse | null>(null);
-  const [tools, setTools] = useState<UserToolCard[]>([]);
+  const [stack, setStack] = useState<StackToolEntry[]>([]);
+  const [profileTags, setProfileTags] = useState<string[]>([]);
   const [communities, setCommunities] = useState<JoinedCommunityCard[]>([]);
 
   useEffect(() => {
@@ -90,7 +93,7 @@ export default function HomePage() {
       me = await api.get<UserPublic>("/api/me");
     } catch (e) {
       console.error("[home] /api/me failed", e);
-      return; // 401 already handled by api.ts (redirects to /onboarding)
+      return; // 401 already handled by api.ts (redirects to /login)
     }
     setUser(me);
 
@@ -108,9 +111,9 @@ export default function HomePage() {
     // skip without breaking the page.
     if (me.role_type !== "user") return;
 
-    const [r, mt, mc] = await Promise.allSettled([
+    const [r, ps, mc] = await Promise.allSettled([
       api.post<RecommendationsResponse>("/api/recommendations", { count: 5 }),
-      api.get<UserToolListResponse>("/api/me/tools"),
+      api.get<ProfileSummaryResponse>("/api/me/profile-summary"),
       api.get<JoinedCommunityListResponse>("/api/me/communities"),
     ]);
     if (r.status === "fulfilled") {
@@ -123,7 +126,16 @@ export default function HomePage() {
     } else {
       console.warn("[home] recommendations failed", r.reason);
     }
-    if (mt.status === "fulfilled") setTools(mt.value.tools);
+    if (ps.status === "fulfilled") {
+      setStack(ps.value.stack_tools);
+      // Compute graph tags from every answer value via the existing
+      // tag-map helper (same module used in /onboarding's live graph).
+      const tags: string[] = [];
+      for (const v of ps.value.all_answer_values) {
+        tags.push(...tagsForAnswerValue(v));
+      }
+      setProfileTags([...new Set(tags)]);
+    }
     if (mc.status === "fulfilled") setCommunities(mc.value.communities);
   };
 
@@ -136,10 +148,10 @@ export default function HomePage() {
   }
 
   return (
-    <div className="home-root no-right">
+    <div className="home-root">
       <HomeLeftRail
         user={user}
-        tools={tools}
+        stack={stack}
         unread={unread}
         communityCount={communities.length}
         onLogout={() => logout()}
@@ -151,6 +163,7 @@ export default function HomePage() {
         recs={recs}
         communities={communities}
       />
+      <HomeRightRail tags={profileTags} />
     </div>
   );
 }
@@ -160,22 +173,17 @@ export default function HomePage() {
 // =============================================================================
 function HomeLeftRail({
   user,
-  tools,
+  stack,
   unread,
   communityCount,
   onLogout,
 }: {
   user: UserPublic;
-  tools: UserToolCard[];
+  stack: StackToolEntry[];
   unread: number;
   communityCount: number;
   onLogout: () => void;
 }) {
-  // Cycle #13 nav: only items that have a real destination on this
-  // cycle. Discover (/tools/explore), Profile, dedicated Communities
-  // route, and a separate Stack page all land in cycle #14.
-  // Each item here scrolls to a section that actually exists on the
-  // page; no "active state" toggle since clicks are jumps not filters.
   const scrollTo = (id: string) => {
     if (typeof document === "undefined") return;
     const el = document.getElementById(id);
@@ -203,8 +211,8 @@ function HomeLeftRail({
         <button className="home-nav-item" onClick={() => scrollTo("home-stack")}>
           <span className="home-nav-glyph">▦</span>
           <span className="home-nav-label">Your stack</span>
-          {tools.length > 0 && (
-            <span className="home-nav-count mono">{tools.length}</span>
+          {stack.length > 0 && (
+            <span className="home-nav-count mono">{stack.length}</span>
           )}
         </button>
         <button
@@ -226,24 +234,20 @@ function HomeLeftRail({
       <div className="home-rail-section" id="home-stack">
         <div className="home-rail-heading mono">Your stack</div>
         <div className="home-stack-list">
-          {tools.length === 0 && (
+          {stack.length === 0 && (
             <div className="mono" style={{ color: "var(--ink-3)", fontSize: 12 }}>
-              no tools yet — answer onboarding to populate
+              no tools yet — answer the stack questions in onboarding
             </div>
           )}
-          {tools.slice(0, 6).map((t) => (
-            <div key={t.id} className="home-stack-item">
+          {stack.slice(0, 8).map((t) => (
+            <div key={t.value} className="home-stack-item">
               <div className="home-stack-logo">
-                <span>{t.tool.name[0]}</span>
-                <span
-                  className={`home-stack-pulse pulse-${t.status === "using" ? "high" : "med"}`}
-                />
+                <span>{t.label[0]?.toUpperCase() || "•"}</span>
+                <span className="home-stack-pulse pulse-high" />
               </div>
               <div className="home-stack-meta">
-                <div className="home-stack-name">{t.tool.name}</div>
-                <div className="mono home-stack-status">
-                  {t.status} · {t.source.replace(/_/g, " ")}
-                </div>
+                <div className="home-stack-name">{t.label}</div>
+                <div className="mono home-stack-status">from your answers</div>
               </div>
             </div>
           ))}
@@ -458,10 +462,43 @@ function FreshCard({
   );
 }
 
-// Right rail removed in cycle #13 audit pass:
-//   - "Your profile graph" used a hardcoded tag list
-//     (["writing","pm","meetings","ai","productivity"]) — no
-//     backend endpoint exposes per-user profile tags.
-//   - "Recent activity" was a hardcoded 5-row mock — no cross-user
-//     activity stream backend exists.
-// Both are V1.5 features (would need new backend endpoints).
+// =============================================================================
+// Right rail — profile graph as a visualization of the user's actual answers.
+//
+// Tags come from /api/me/profile-summary.all_answer_values, computed
+// client-side via tagsForAnswerValue (same helper /onboarding's live
+// graph uses). Empty array = no answers yet → graph idles.
+// (Activity feed stayed removed — no cross-user stream backend.)
+// =============================================================================
+function HomeRightRail({ tags }: { tags: string[] }) {
+  return (
+    <aside className="home-rail home-rail-right">
+      <div className="home-rail-heading mono">Your profile graph</div>
+      <div className="home-mini-graph">
+        <ToolGraph
+          progress={tags.length > 0 ? 1 : 0.4}
+          highlightedTags={tags}
+          mode="score"
+          gridSlots={Math.max(4, Math.min(8, tags.length || 5))}
+          scale={0.85}
+        />
+      </div>
+      <div className="home-rail-tags">
+        {tags.length === 0 ? (
+          <span className="mono" style={{ color: "var(--ink-3)", fontSize: 12 }}>
+            answer onboarding to populate
+          </span>
+        ) : (
+          tags.slice(0, 10).map((t) => (
+            <span key={t} className="onb-graph-tag">
+              {t}
+            </span>
+          ))
+        )}
+      </div>
+      <Link href="/onboarding" className="mono home-rail-refine">
+        refine profile ↗
+      </Link>
+    </aside>
+  );
+}

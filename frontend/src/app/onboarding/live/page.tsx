@@ -30,6 +30,11 @@ import type {
   ToolCardWithFlags,
 } from "@/lib/api-types";
 
+interface LiveStateResponse {
+  answers: Record<string, Record<string, unknown>>;
+  next_step: number | null;
+}
+
 
 // Convert API tool shapes to the ToolGraph's MeshTool shape.
 function toMeshTool(t: { slug: string; name: string; category?: string | null; labels?: string[]; layer?: string | null; tagline?: string | null }): MeshTool {
@@ -125,40 +130,92 @@ function LiveTapLoop() {
   const [q3Options, setQ3Options] = useState<LiveOption[] | null>(null);
   const [q4Selected, setQ4Selected] = useState("");
 
-  // Fetch initial 40-ish tools from the catalog so the graph shows
-  // real candidates before Q1 lands.
+  // Mount: fetch schema + saved live state in parallel, then either
+  // restore from previous session OR seed graph with initial 40 tools.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const r = await api.get<ToolsBrowseResponse>(
-          "/api/tools?limit=40",
-        );
+        const [schemaR, stateR] = await Promise.all([
+          api.get<LiveQuestionsResponse>("/api/onboarding/live-questions"),
+          api.get<LiveStateResponse>("/api/recommendations/live-state"),
+        ]);
         if (cancelled) return;
-        setGraphTools(r.tools.map(toMeshTool));
-      } catch (e) {
-        console.warn("[live] initial tools fetch failed", e);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+        setQuestions(schemaR.questions);
 
-  // Fetch the schema once.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await api.get<LiveQuestionsResponse>(
-          "/api/onboarding/live-questions",
-        );
-        if (cancelled) return;
-        setQuestions(r.questions);
+        const savedAnswers = stateR.answers || {};
+        const answeredKeys = Object.keys(savedAnswers);
+
+        if (answeredKeys.length === 0) {
+          // No saved state — seed graph with the catalog top-40.
+          try {
+            const r = await api.get<ToolsBrowseResponse>("/api/tools?limit=40");
+            if (!cancelled) setGraphTools(r.tools.map(toMeshTool));
+          } catch {
+            // non-fatal
+          }
+        } else {
+          // Restore questionnaire state from saved live_answers rows.
+          const a1 = savedAnswers["1"] as
+            | { job_title?: string; level?: string; industry?: string }
+            | undefined;
+          if (a1) {
+            setQ1Answer({
+              job_title: a1.job_title || "",
+              level: a1.level || "",
+              industry: a1.industry || "",
+            });
+          }
+          const a2 = savedAnswers["2"] as
+            | { selected_values?: string[] }
+            | undefined;
+          if (a2 && Array.isArray(a2.selected_values)) {
+            setQ2Selected(a2.selected_values);
+          }
+          const a3 = savedAnswers["3"] as
+            | { selected_value?: string }
+            | undefined;
+          if (a3?.selected_value) setQ3Selected(a3.selected_value);
+          const a4 = savedAnswers["4"] as
+            | { selected_value?: string }
+            | undefined;
+          if (a4?.selected_value) setQ4Selected(a4.selected_value);
+
+          // Position the user at the next unanswered step (or "done"
+          // if all 4 are saved).
+          if (stateR.next_step === null) {
+            setDone(true);
+            setStep(4);
+          } else if (stateR.next_step >= 1 && stateR.next_step <= 4) {
+            setStep(stateR.next_step as 1 | 2 | 3 | 4);
+          }
+
+          // Repopulate the graph by re-firing the latest answered
+          // q_index. One OpenAI embed cost; the answer is already
+          // persisted so it's idempotent.
+          const latestQ = Math.max(...answeredKeys.map((k) => Number(k)));
+          const latestAv = savedAnswers[String(latestQ)] as LiveAnswerValue;
+          try {
+            const r = await api.post<LiveStepResponse>(
+              "/api/recommendations/live-step",
+              { q_index: latestQ, answer_value: latestAv },
+            );
+            if (!cancelled) {
+              setLatest(r);
+              const next: MeshTool[] = r.top.map(toMeshTool);
+              if (r.wildcard) next.push(toMeshTool(r.wildcard));
+              setGraphTools(next);
+            }
+          } catch (e) {
+            console.warn("[live] state-restore replay failed", e);
+          }
+        }
       } catch (e) {
         if (e instanceof ApiError && e.status === 403) {
           router.replace("/home");
           return;
         }
-        console.error("[live] schema fetch failed", e);
+        console.error("[live] mount fetch failed", e);
         setError("could not load questions");
       } finally {
         if (!cancelled) setLoading(false);

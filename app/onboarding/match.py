@@ -31,12 +31,23 @@ ROLE_QUESTION_KEY = "role.primary_function"
 async def count_distinct_answers(user_id: ObjectId) -> int:
     """Count the number of DISTINCT question_ids the user has at least
     one answer for. Re-answering the same question doesn't double-count
-    (per F-QB-3 append-only semantics)."""
+    (per F-QB-3 append-only semantics).
+
+    Cycle #15: also counts live-flow answers (one row per (user_id,
+    q_index) in the `live_answers` collection). The two collections
+    are disjoint — classic flow uses ObjectId question_ids, live flow
+    uses int q_indices — so summing the counts is safe."""
     cursor = answers_collection().find(
         {"user_id": user_id}, {"question_id": 1}
     )
     distinct_qids: set[ObjectId] = {row["question_id"] async for row in cursor}
-    return len(distinct_qids)
+
+    # Live-flow questions count too.
+    from app.db.live_answers import live_answers_collection
+    live_count = await live_answers_collection().count_documents(
+        {"user_id": user_id}
+    )
+    return len(distinct_qids) + live_count
 
 
 async def latest_role_for_user(user_id: ObjectId) -> str | None:

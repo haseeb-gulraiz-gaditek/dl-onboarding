@@ -128,3 +128,30 @@ async def live_step(
         count_kept=result.count_kept,
         degraded=result.degraded,
     )
+
+
+# ---- F-LIVE-11: persistence — fetch saved live state for refresh ----
+
+class LiveStateResponse(BaseModel):
+    """All live answers a user has captured so far. Frontend uses
+    this on /onboarding/live mount to restore questionnaire state
+    after a page refresh."""
+    answers: dict[str, dict[str, Any]]   # str(q_index) → answer_value
+    next_step: int | None                # 1..4, or None when all 4 answered
+
+
+@router.get("/live-state", response_model=LiveStateResponse)
+async def live_state(
+    user: dict[str, Any] = Depends(require_role("user")),
+) -> LiveStateResponse:
+    """Return the user's saved live answers + next unanswered step."""
+    raw = await get_user_live_answers(user["_id"])
+    answers = {str(k): v for k, v in raw.items()}
+    answered_indices = sorted(int(k) for k in answers.keys())
+    next_step: int | None
+    if not answered_indices:
+        next_step = 1
+    else:
+        last = answered_indices[-1]
+        next_step = last + 1 if last < 4 else None
+    return LiveStateResponse(answers=answers, next_step=next_step)

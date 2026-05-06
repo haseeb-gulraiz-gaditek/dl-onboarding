@@ -65,11 +65,19 @@ async def _get_weaviate_client() -> Any:
 
     try:
         import weaviate
-        from weaviate.classes.init import Auth
+        from weaviate.classes.init import Auth, AdditionalConfig, Timeout
 
+        # Short init timeout so an unreachable Weaviate cloud (no
+        # network / firewall blocking gRPC) fails fast instead of
+        # blocking the request thread for ~30s on first call. The
+        # init probe failing caches _client=None and every later
+        # call short-circuits without re-trying.
         client = weaviate.use_async_with_weaviate_cloud(
             cluster_url=url,
             auth_credentials=Auth.api_key(api_key),
+            additional_config=AdditionalConfig(
+                timeout=Timeout(init=2, query=5, insert=5),
+            ),
         )
         await client.connect()
         _client = client

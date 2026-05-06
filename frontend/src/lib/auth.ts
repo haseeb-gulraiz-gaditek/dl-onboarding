@@ -2,6 +2,7 @@
 // Per spec-delta frontend-core F-FE-5.
 
 import { api, clearJwt, getJwt, setJwt } from "./api";
+import { clearAdminCache } from "./admin";
 import type { AuthResponse, UserPublic } from "./api-types";
 
 export type RoleQuestionAnswer = "finding_tools" | "launching_product";
@@ -39,6 +40,7 @@ export async function login(params: LoginParams): Promise<AuthResponse> {
 
 export function logout(): void {
   clearJwt();
+  clearAdminCache();
   if (typeof window !== "undefined") {
     window.location.assign("/");
   }

@@ -161,6 +161,153 @@ export interface DashboardResponse {
   dashboard: DashboardLaunchCard[];
 }
 
+// ---- Per-launch analytics (cycle #11 F-DASH-3) ----
+
+export interface LaunchAnalyticsResponse {
+  launch_id: string;
+  approved_tool_slug: string | null;
+  verification_status: VerificationStatus;
+  matched_count: number;
+  tell_me_more_count: number;
+  skip_count: number;
+  total_clicks: number;
+  clicks_by_community: Record<string, number>;
+  clicks_by_surface: Record<string, number>;
+}
+
+// ---- Posts / comments / votes (cycle #7) ----
+
+export interface PostAuthor {
+  id: string;
+  display_name: string;
+}
+
+export interface PostCard {
+  id: string;
+  community_slug: string;
+  cross_posted_to: string[];
+  author: PostAuthor;
+  title: string;
+  body_md: string;
+  attached_launch_id: string | null;
+  vote_score: number;
+  comment_count: number;
+  user_vote: number;     // -1, 0, 1
+  flagged: boolean;
+  created_at: string;
+  last_activity_at: string;
+}
+
+export interface PostListResponse {
+  posts: PostCard[];
+  next_before: string | null;   // cursor on created_at
+}
+
+export interface PostCreateRequest {
+  community_slug: string;
+  cross_post_slugs?: string[];
+  title: string;
+  body_md?: string;
+}
+
+export interface VoteRequest {
+  target_type: "post" | "comment" | "tool";
+  target_id: string;
+  direction: 1 | -1;
+}
+
+export interface VoteResponse {
+  voted: boolean;
+  current_direction: number;
+}
+
+export interface CommunityDetailResponse {
+  community: CommunityCard;
+  is_member: boolean;
+}
+
+// ---- Tools browse (cycle #10) ----
+
+export interface ToolsBrowseResponse {
+  tools: ToolCardWithFlags[];
+  next_before: string | null;     // cursor on `name`
+}
+
+export interface BrowsedLaunchMeta {
+  founder_display_name: string;
+  problem_statement: string;
+  approved_at: string | null;
+}
+
+export interface BrowsedLaunchCard {
+  tool: ToolCardWithFlags;
+  launch_meta: BrowsedLaunchMeta;
+  in_my_communities: string[];
+}
+
+export interface BrowsedLaunchListResponse {
+  launches: BrowsedLaunchCard[];
+  next_before: string | null;     // cursor on reviewed_at
+}
+
+// ---- Admin launches (cycle #8) ----
+
+export interface LaunchAdminCard {
+  id: string;
+  founder_email: string;
+  product_url: string;
+  problem_statement: string;
+  verification_status: VerificationStatus;
+  created_at: string;
+}
+
+export interface LaunchAdminListResponse {
+  launches: LaunchAdminCard[];
+}
+
+export interface LaunchAdminDetail {
+  id: string;
+  founder_email: string;
+  founder_user_id: string;
+  product_url: string;
+  problem_statement: string;
+  icp_description: string;
+  existing_presence_links: string[];
+  target_community_slugs: string[];
+  verification_status: VerificationStatus;
+  rejection_comment: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  approved_tool_slug: string | null;
+  created_at: string;
+}
+
+// ---- Admin catalog (cycle #3) ----
+
+export interface AdminCatalogTool {
+  slug: string;
+  name: string;
+  tagline: string;
+  description: string;
+  url: string;
+  pricing_summary: string;
+  category: string;
+  labels: string[];
+  curation_status: "pending" | "approved" | "rejected";
+  rejection_comment: string | null;
+  source: string;
+}
+
+export interface AdminCatalogListResponse {
+  tools: AdminCatalogTool[];
+}
+
+// ---- Notifications mark-all-read (cycle #12 F-NOTIF-6) ----
+
+export interface MarkAllReadResponse {
+  updated: number;
+}
+
 // ---- Notifications (cycle #12) ----
 
 export interface NotificationCard {

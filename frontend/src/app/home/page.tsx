@@ -9,9 +9,11 @@ import { useRouter } from "next/navigation";
 
 import { MeshMark } from "@/components/Primitives";
 import { ToolGraph } from "@/components/ToolGraph";
+import { HeaderBell } from "@/components/HeaderBell";
 
 import { api, ApiError } from "@/lib/api";
 import { isAuthenticated, logout } from "@/lib/auth";
+import { isAdmin, probeAdminAndCache } from "@/lib/admin";
 import { tagsForAnswerValue } from "@/lib/tag-map";
 import type {
   DashboardLaunchCard,
@@ -76,12 +78,15 @@ export default function HomePage() {
   const [profileTags, setProfileTags] = useState<string[]>([]);
   const [communities, setCommunities] = useState<JoinedCommunityCard[]>([]);
   const [dashboard, setDashboard] = useState<DashboardLaunchCard[]>([]);
+  const [admin, setAdmin] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
       router.replace("/login");
       return;
     }
+    setAdmin(isAdmin());
+    void probeAdminAndCache().then(setAdmin);
     void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -163,6 +168,7 @@ export default function HomePage() {
         unread={unread}
         notes={notes}
         dashboard={dashboard}
+        admin={admin}
         onLogout={() => logout()}
       />
     );
@@ -176,6 +182,7 @@ export default function HomePage() {
         stack={stack}
         unread={unread}
         communityCount={communities.length}
+        admin={admin}
         onLogout={() => logout()}
       />
       <HomeCenter
@@ -198,12 +205,14 @@ function HomeLeftRail({
   stack,
   unread,
   communityCount,
+  admin,
   onLogout,
 }: {
   user: UserPublic;
   stack: StackToolEntry[];
   unread: number;
   communityCount: number;
+  admin: boolean;
   onLogout: () => void;
 }) {
   const scrollTo = (id: string) => {
@@ -219,6 +228,7 @@ function HomeLeftRail({
           <MeshMark size={20} />
           <span>Mesh</span>
         </Link>
+        <HeaderBell />
       </div>
       <nav className="home-nav">
         <button className="home-nav-item" onClick={() => scrollTo("home-top")}>
@@ -237,6 +247,10 @@ function HomeLeftRail({
             <span className="home-nav-count mono">{stack.length}</span>
           )}
         </button>
+        <Link href="/tools/explore" className="home-nav-item">
+          <span className="home-nav-glyph">✦</span>
+          <span className="home-nav-label">Discover</span>
+        </Link>
         <button
           className="home-nav-item"
           onClick={() => scrollTo("home-communities")}
@@ -247,10 +261,20 @@ function HomeLeftRail({
             <span className="home-nav-count mono">{communityCount}</span>
           )}
         </button>
+        <Link href="/concierge" className="home-nav-item">
+          <span className="home-nav-glyph">⌬</span>
+          <span className="home-nav-label">Concierge</span>
+        </Link>
         <Link href="/onboarding" className="home-nav-item">
           <span className="home-nav-glyph">◎</span>
           <span className="home-nav-label">Refine profile</span>
         </Link>
+        {admin && (
+          <Link href="/admin/launches" className="home-nav-item" style={{ color: "var(--accent)" }}>
+            <span className="home-nav-glyph">⚙</span>
+            <span className="home-nav-label">Admin</span>
+          </Link>
+        )}
       </nav>
 
       <div className="home-rail-section" id="home-stack">
@@ -550,12 +574,14 @@ function FounderHome({
   unread,
   notes,
   dashboard,
+  admin,
   onLogout,
 }: {
   user: UserPublic;
   unread: number;
   notes: NotificationCard[];
   dashboard: DashboardLaunchCard[];
+  admin: boolean;
   onLogout: () => void;
 }) {
   const total = dashboard.length;
@@ -571,12 +597,23 @@ function FounderHome({
             <MeshMark size={20} />
             <span>Mesh</span>
           </Link>
+          <HeaderBell />
         </div>
         <nav className="home-nav">
           <Link href="/founders/launch" className="home-nav-item">
             <span className="home-nav-glyph">+</span>
             <span className="home-nav-label">New launch</span>
           </Link>
+          <Link href="/concierge" className="home-nav-item">
+            <span className="home-nav-glyph">⌬</span>
+            <span className="home-nav-label">Concierge</span>
+          </Link>
+          {admin && (
+            <Link href="/admin/launches" className="home-nav-item" style={{ color: "var(--accent)" }}>
+              <span className="home-nav-glyph">⚙</span>
+              <span className="home-nav-label">Admin</span>
+            </Link>
+          )}
         </nav>
 
         <div className="home-rail-section">
@@ -741,6 +778,18 @@ function FounderLaunchRow({ launch }: { launch: DashboardLaunchCard }) {
             · {launch.skip_count} skip · {launch.total_clicks} clicks
           </div>
         )}
+        <Link
+          href={`/founders/launches/${launch.launch_id}/analytics`}
+          className="mono"
+          style={{
+            display: "inline-block",
+            marginTop: 8,
+            color: "var(--accent)",
+            fontSize: 12,
+          }}
+        >
+          view analytics →
+        </Link>
       </div>
       <span
         className="mono"

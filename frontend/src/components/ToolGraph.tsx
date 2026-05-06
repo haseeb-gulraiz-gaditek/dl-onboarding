@@ -476,7 +476,9 @@ export function ToolGraph({
       conns.forEach(({ a, b }) => {
         const key = a.idx < b.idx ? `${a.idx}-${b.idx}` : `${b.idx}-${a.idx}`;
         const existing = pulses.filter((p) => p.key === key).length;
-        if (existing < 2 && Math.random() < 0.04) {
+        // Cycle #15: lower spawn rate (0.04 → 0.015) + cap 1 per
+        // connection so labels on the soma stay readable.
+        if (existing < 1 && Math.random() < 0.015) {
           pulses.push({
             key, a, b, t: 0,
             speed: 0.35 + Math.random() * 0.4,

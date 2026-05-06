@@ -4,8 +4,8 @@
 
 ### Backend — schema + helpers
 
-- [ ] `app/onboarding/live_questions.py` — `LiveQuestion` Pydantic model + `LIVE_QUESTIONS` constant (4 questions, copy from `validation/onboarding-v1-locked.md`)
-- [ ] Hand-curate `options_per_role` for ~12 roles (SWE / Accountant / Doctor / Marketer / Designer / PM / Sales / Founder / Student / Lawyer / Operations / Customer Success / Consultant) + `fallback_options` (12-tool generic set)
+- [x] `app/onboarding/live_questions.py` — `LiveQuestion` Pydantic model + `LIVE_QUESTIONS` constant (4 questions, copy from `validation/onboarding-v1-locked.md`)
+- [x] Hand-curate `options_per_role` for ~12 roles (SWE / Accountant / Doctor / Marketer / Designer / PM / Sales / Founder / Student / Lawyer / Operations / Customer Success / Consultant) + `fallback_options` (12-tool generic set)
 - [ ] `GET /api/onboarding/live-questions` — return all 4 questions (auth-only)
 - [ ] `GET /api/onboarding/live-questions/{q_index}/options?role=...` — Q2/Q3 role-conditioned options endpoint
 - [ ] `app/embeddings/vector_store.py` — add `hybrid_search()` helper (F-LIVE-3)

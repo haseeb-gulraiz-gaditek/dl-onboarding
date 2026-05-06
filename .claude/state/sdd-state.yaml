@@ -9,7 +9,7 @@ installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
   slug: live-narrowing-onboarding
-  phase: proposal            # proposal | implement | complete
+  phase: implementation      # proposal | implement | complete
   started_at: "2026-05-06T23:30:00+05:00"
   tracker_ref: "backlog:15"
   base_branch: main

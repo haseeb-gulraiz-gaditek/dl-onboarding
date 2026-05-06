@@ -108,9 +108,34 @@ async def lifespan(app: FastAPI):
     await ensure_notification_indexes()
     await ensure_engagement_indexes()
     await ensure_user_tools_indexes()
+
+    # Optional auto-approver for demo / testing only. Enabled by env
+    # AUTO_APPROVE_LAUNCHES_AFTER_SECONDS=N (N>=1). Default 0 = off.
+    import asyncio as _asyncio
+    auto_approve_secs = int(
+        os.environ.get("AUTO_APPROVE_LAUNCHES_AFTER_SECONDS", "0") or "0"
+    )
+    auto_approve_task = None
+    if auto_approve_secs > 0:
+        from app.tasks.auto_approve import run_auto_approver_loop
+        print(
+            f"[main] AUTO_APPROVE_LAUNCHES_AFTER_SECONDS={auto_approve_secs}; "
+            f"starting auto-approver background task",
+            flush=True,
+        )
+        auto_approve_task = _asyncio.create_task(
+            run_auto_approver_loop(after_seconds=auto_approve_secs)
+        )
+
     try:
         yield
     finally:
+        if auto_approve_task is not None:
+            auto_approve_task.cancel()
+            try:
+                await auto_approve_task
+            except _asyncio.CancelledError:
+                pass
         await close_weaviate_client()
         await close_mongo()
 

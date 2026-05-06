@@ -14,6 +14,11 @@ from app.db.launches import find_by_id, list_for_admin, update_resolution
 from app.db.notifications import insert as insert_notification
 from app.db.tools_founder_launched import insert as insert_fl_tool
 from app.db.users import find_user_by_id
+from app.launches.approve import (
+    LaunchAlreadyResolved,
+    LaunchNotFound,
+    approve_launch,
+)
 from app.launches.publish import publish_launch
 from app.launches.slug import derive_tool_slug, find_available_slug
 from app.models.launch import (
@@ -113,84 +118,23 @@ async def admin_approve(
     launch_id: str,
     admin: dict[str, Any] = Depends(require_admin()),
 ) -> LaunchResponse:
-    """F-LAUNCH-4: derive slug, create founder-launched tool, mark
-    launch approved, write notification."""
+    """F-LAUNCH-4: thin wrapper around approve_launch service."""
     oid = _parse_oid(launch_id)
     if oid is None:
         raise HTTPException(
             status_code=404,
             detail={"error": "launch_not_found"},
         )
-    existing = await find_by_id(oid)
-    if existing is None:
-        raise HTTPException(
-            status_code=404,
-            detail={"error": "launch_not_found"},
-        )
-    if existing.get("verification_status") != "pending":
-        raise _resolved_409()
-
-    base_slug = derive_tool_slug(existing["product_url"])
-    slug = await find_available_slug(base_slug)
-
-    tagline = existing["problem_statement"][:100]
-    description = (
-        f"{existing['problem_statement']}\n\nIdeal customer: {existing['icp_description']}"
-    )
-    # Friendly name: title-case each slug segment so multi-word
-    # products (`content-planner`) read like "Content Planner"
-    # instead of just "Content".
-    name = (
-        " ".join(seg.capitalize() for seg in slug.split("-") if seg)
-        if slug else "Launch"
-    )
-
-    await insert_fl_tool({
-        "slug": slug,
-        "name": name,
-        "tagline": tagline,
-        "description": description,
-        "url": existing["product_url"],
-        "pricing_summary": "Free",
-        "category": "automation_agents",
-        "labels": ["new"],
-        "source": "founder_launch",
-        "is_founder_launched": True,
-        "launched_via_id": existing["_id"],
-        "last_reviewed_at": existing.get("reviewed_at"),
-        "reviewed_by": admin.get("email"),
-    })
-
-    updated = await update_resolution(
-        launch_id=oid,
-        status="approved",
-        reviewed_by=admin.get("email", ""),
-        approved_tool_slug=slug,
-    )
-    if updated is None:
-        # Lost the race — someone else resolved between our check and
-        # the find_one_and_update. Surface the same 409.
-        raise _resolved_409()
-
-    await insert_notification(
-        user_id=existing["founder_user_id"],
-        kind="launch_approved",
-        payload={"launch_id": str(oid), "tool_slug": slug},
-    )
-
-    # F-PUB-2: synchronous publish (community posts + concierge nudges).
-    publish_summary: dict[str, int] = {
-        "community_posts_count": 0, "nudge_count": 0,
-    }
     try:
-        publish_summary = await publish_launch(
-            launch_doc=updated, tool_slug=slug,
+        updated, publish_summary = await approve_launch(
+            launch_id=oid, reviewed_by=admin.get("email", ""),
         )
-    except Exception as exc:
-        # Defensive: the orchestrator already swallows per-step
-        # exceptions; an exception here means the orchestrator itself
-        # blew up. Log and return the launch as approved anyway.
-        print(f"[admin_launches] publish_launch raised: {exc}")
+    except LaunchNotFound:
+        raise HTTPException(
+            status_code=404, detail={"error": "launch_not_found"},
+        )
+    except LaunchAlreadyResolved:
+        raise _resolved_409()
 
     return to_launch_response(updated, publish_summary=publish_summary)
 

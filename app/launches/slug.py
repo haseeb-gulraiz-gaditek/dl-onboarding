@@ -25,18 +25,45 @@ MAX_SLUG_SUFFIX = 99
 _SLUG_INVALID_RE = re.compile(r"[^a-z0-9-]+")
 _DASH_RUN_RE = re.compile(r"-{2,}")
 
+# Common app/marketing subdomain prefixes that are not part of the
+# product name. Stripped before we consider the host for slug/name.
+_NOISE_SUBDOMAINS = (
+    "www.", "app.", "my.", "go.", "try.", "get.",
+    "dashboard.", "admin.", "portal.", "beta.", "staging.",
+)
+
 
 def derive_tool_slug(product_url: str) -> str:
-    """Pure synchronous: URL → normalized slug base. No DB scan."""
+    """Pure synchronous: URL → normalized slug base. No DB scan.
+
+    Examples:
+      https://app.contentplanner.site/foo  →  contentplanner
+      https://notion.so                    →  notion
+      https://www.zapier.com               →  zapier
+      https://blog.example.io              →  blog-example
+    """
     parsed = urlparse(product_url.strip())
     host = (parsed.hostname or "").lower()
-    if host.startswith("www."):
-        host = host[4:]
+
+    # Strip noise prefixes (idempotently — handles www.app.foo.com).
+    changed = True
+    while changed:
+        changed = False
+        for prefix in _NOISE_SUBDOMAINS:
+            if host.startswith(prefix):
+                host = host[len(prefix):]
+                changed = True
+                break
+
+    # Strip the TLD (last dot-segment) so names don't end in -com/-site/-io.
+    if "." in host:
+        host = host.rsplit(".", 1)[0]
+
     if not host:
-        # Fallback: timestamp-tagged so it's always unique enough.
         return f"launch-{int(time.time())}"
 
-    # Replace invalid chars with "-", collapse runs, strip ends.
+    # Replace invalid chars (including remaining dots) with "-",
+    # collapse runs, strip ends.
     slug = _SLUG_INVALID_RE.sub("-", host)
     slug = _DASH_RUN_RE.sub("-", slug).strip("-")
     if not slug:

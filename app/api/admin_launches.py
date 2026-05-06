@@ -137,8 +137,13 @@ async def admin_approve(
     description = (
         f"{existing['problem_statement']}\n\nIdeal customer: {existing['icp_description']}"
     )
-    # Friendly name: capitalized first segment of slug.
-    name = slug.split("-")[0].capitalize() if slug else "Launch"
+    # Friendly name: title-case each slug segment so multi-word
+    # products (`content-planner`) read like "Content Planner"
+    # instead of just "Content".
+    name = (
+        " ".join(seg.capitalize() for seg in slug.split("-") if seg)
+        if slug else "Launch"
+    )
 
     await insert_fl_tool({
         "slug": slug,

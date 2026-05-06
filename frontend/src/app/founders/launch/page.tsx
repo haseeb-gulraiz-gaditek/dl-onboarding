@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 
 import { MButton, MeshMark } from "@/components/Primitives";
 import { CommunityGraph } from "@/components/CommunityGraph";
+import { HeaderBell } from "@/components/HeaderBell";
 
 import { api, ApiError } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
@@ -224,9 +225,12 @@ export default function FoundersLaunchPage() {
             <span>Mesh</span>
             <span className="founders-brand-tag mono">/ founders</span>
           </Link>
-          <Link href="/home" className="onb-exit mono">
-            save & exit
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <HeaderBell />
+            <Link href="/home" className="onb-exit mono">
+              save & exit
+            </Link>
+          </div>
         </header>
 
         <div className="onb-q-wrap founders-step">

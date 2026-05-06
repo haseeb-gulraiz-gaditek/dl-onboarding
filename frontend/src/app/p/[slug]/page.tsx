@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { MButton, MeshMark } from "@/components/Primitives";
+import { HeaderBell } from "@/components/HeaderBell";
 import { api, ApiError } from "@/lib/api";
 import { isAuthenticated, currentUser } from "@/lib/auth";
 import type {
@@ -188,9 +189,12 @@ function ProductShell({ children }: { children: React.ReactNode }) {
             <MeshMark size={20} />
             <span>Mesh</span>
           </Link>
-          <Link href="/home" className="onb-exit mono">
-            ← home
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <HeaderBell />
+            <Link href="/home" className="onb-exit mono">
+              ← home
+            </Link>
+          </div>
         </header>
         <div className="onb-result" style={{ paddingTop: 32 }}>
           {children}

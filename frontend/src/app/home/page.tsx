@@ -262,7 +262,12 @@ function HomeLeftRail({
             </div>
           )}
           {stack.slice(0, 8).map((t) => (
-            <div key={t.value} className="home-stack-item">
+            <Link
+              key={t.value}
+              href={`/p/${t.value}`}
+              className="home-stack-item"
+              style={{ display: "flex", textDecoration: "none" }}
+            >
               <div className="home-stack-logo">
                 <span>{t.label[0]?.toUpperCase() || "•"}</span>
                 <span className="home-stack-pulse pulse-high" />
@@ -271,7 +276,7 @@ function HomeLeftRail({
                 <div className="home-stack-name">{t.label}</div>
                 <div className="mono home-stack-status">from your answers</div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
         <Link href="/onboarding" className="home-stack-add mono">+ refine profile</Link>
@@ -431,6 +436,17 @@ function NudgeCard({ n, delay }: { n: NotificationCard; delay: number }) {
       </div>
       <h3 className="home-nudge-title">{title}</h3>
       <div className="home-nudge-actions">
+        {(() => {
+          const slug = (n.payload as { tool_slug?: string }).tool_slug;
+          if (slug) {
+            return (
+              <Link href={`/p/${slug}`} className="home-nudge-cta">
+                view tool →
+              </Link>
+            );
+          }
+          return null;
+        })()}
         {n.kind === "concierge_nudge" && (
           <button
             className="home-nudge-cta"

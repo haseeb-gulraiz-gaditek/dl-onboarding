@@ -431,7 +431,11 @@ function ResultCard({
       className="onb-result-card"
       style={{ transitionDelay: `${delay}ms` }}
     >
-      <div className="onb-result-card-top">
+      <Link
+        href={`/p/${pick.tool.slug}`}
+        className="onb-result-card-top"
+        style={{ textDecoration: "none", display: "flex" }}
+      >
         <div className="onb-result-logo">
           <div className="onb-result-logo-inner">{pick.tool.name[0]}</div>
         </div>
@@ -439,18 +443,19 @@ function ResultCard({
           <div className="h-card">{pick.tool.name}</div>
           <div className="mono onb-result-tag">{pick.tool.category}</div>
         </div>
-        <button className="onb-result-save">♡</button>
-      </div>
+      </Link>
       <p className="body" style={{ marginTop: 16 }}>
         {pick.reasoning}
       </p>
       <div className="onb-result-card-actions">
-        <MButton size="sm" variant="ghost">
-          Save
-        </MButton>
+        <Link href={`/p/${pick.tool.slug}`}>
+          <MButton size="sm" variant="ghost">
+            View on Mesh
+          </MButton>
+        </Link>
         <a href={pick.tool.url} target="_blank" rel="noreferrer">
           <MButton size="sm" variant="quiet" trailing="↗">
-            Open
+            Open site
           </MButton>
         </a>
       </div>

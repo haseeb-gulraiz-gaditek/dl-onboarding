@@ -520,8 +520,10 @@ items:
   - id: 14
     summary: "frontend-secondary"
     priority: medium
-    status: queued
+    status: in_progress
     added: 2026-05-03
+    promoted_to_cycle: "frontend-secondary"
+    promoted_at: "2026-05-06"
     notes: |
       Polish + completeness pass. Wires the remaining design
       surfaces against existing API + adds two minimal admin

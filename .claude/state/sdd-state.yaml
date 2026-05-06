@@ -8,12 +8,12 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: null
-  phase: null                # proposal | implement | complete
-  started_at: null
-  tracker_ref: null
-  base_branch: null
-  branch_name: null
+  slug: frontend-secondary
+  phase: proposal            # proposal | implement | complete
+  started_at: "2026-05-06T22:00:00+05:00"
+  tracker_ref: "backlog:14"
+  base_branch: main
+  branch_name: frontend-secondary
 history:
   - slug: frontend-core
     completed: "2026-05-06"

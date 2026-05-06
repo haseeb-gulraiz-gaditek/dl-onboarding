@@ -22,14 +22,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { MButton, MeshMark } from "@/components/Primitives";
-import {
-  CommunityGraph,
-  COMMUNITIES as MESH_COMMUNITIES,
-} from "@/components/CommunityGraph";
+import { CommunityGraph } from "@/components/CommunityGraph";
 
 import { api, ApiError } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
-import type { LaunchResponse, LaunchSubmitRequest } from "@/lib/api-types";
+import type {
+  CommunityCard,
+  CommunityListResponse,
+  LaunchResponse,
+  LaunchSubmitRequest,
+} from "@/lib/api-types";
 
 const CATEGORY_OPTS = [
   { l: "AI / agent", tags: ["ai"] },
@@ -95,9 +97,23 @@ export default function FoundersLaunchPage() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<State>(EMPTY);
   const [pickedSlugs, setPickedSlugs] = useState<string[]>([]);
+  const [communities, setCommunities] = useState<CommunityCard[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<LaunchResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // Fetch the real community catalog from backend (cycle #7).
+  useEffect(() => {
+    if (!authChecked) return;
+    (async () => {
+      try {
+        const r = await api.get<CommunityListResponse>("/api/communities");
+        setCommunities(r.communities);
+      } catch (e) {
+        console.error("[founders/launch] community list load failed", e);
+      }
+    })();
+  }, [authChecked]);
 
   const set = <K extends keyof State>(k: K, v: State[K]) =>
     setData((prev) => ({ ...prev, [k]: v }));
@@ -125,7 +141,8 @@ export default function FoundersLaunchPage() {
       return !!(data.icp_who.trim() || data.icp_jtbd.trim() || data.icp_pain.trim());
     }
     if (s === 4) return !!data.pricing;
-    if (s === 5) return data.pitch.trim().length > 0;
+    if (s === 5)
+      return data.pitch.trim().length > 0 && pickedSlugs.length > 0;
     return true;
   };
 
@@ -173,6 +190,15 @@ export default function FoundersLaunchPage() {
   if (!authChecked) return null;
   if (submitted) return <PendingScreen launch={submitted} pickedSlugs={pickedSlugs} />;
 
+  const togglePicked = (slug: string) =>
+    setPickedSlugs((prev) =>
+      prev.includes(slug)
+        ? prev.filter((s) => s !== slug)
+        : prev.length < 6
+        ? [...prev, slug]
+        : prev,
+    );
+
   return (
     <div className="onb-root founders-root">
       <div className="onb-graph-pane founders-graph-pane">
@@ -184,23 +210,10 @@ export default function FoundersLaunchPage() {
             <span className="onb-graph-dot" />
             <span>
               {pickedSlugs.length === 0
-                ? "tap below to pick target communities (1..6)"
-                : `${pickedSlugs.length} of 6 communities picked`}
+                ? "matching communities…"
+                : `${pickedSlugs.length} of 6 picked — see step 5 to choose`}
             </span>
           </div>
-          <CommunityChips
-            tags={tags}
-            picked={pickedSlugs}
-            onToggle={(slug) =>
-              setPickedSlugs((prev) =>
-                prev.includes(slug)
-                  ? prev.filter((s) => s !== slug)
-                  : prev.length < 6
-                  ? [...prev, slug]
-                  : prev,
-              )
-            }
-          />
         </div>
       </div>
 
@@ -243,7 +256,15 @@ export default function FoundersLaunchPage() {
             {step === 2 && <Step2 data={data} set={set} />}
             {step === 3 && <Step3 data={data} set={set} />}
             {step === 4 && <Step4 data={data} set={set} />}
-            {step === 5 && <Step5 data={data} set={set} />}
+            {step === 5 && (
+              <Step5
+                data={data}
+                set={set}
+                communities={communities}
+                picked={pickedSlugs}
+                onTogglePicked={togglePicked}
+              />
+            )}
 
             {err && (
               <div className="mono" style={{ color: "var(--warn)", marginTop: 16 }}>
@@ -428,13 +449,24 @@ function Step4({ data, set }: { data: State; set: <K extends keyof State>(k: K, 
   );
 }
 
-function Step5({ data, set }: { data: State; set: <K extends keyof State>(k: K, v: State[K]) => void }) {
+function Step5({
+  data,
+  set,
+  communities,
+  picked,
+  onTogglePicked,
+}: {
+  data: State;
+  set: <K extends keyof State>(k: K, v: State[K]) => void;
+  communities: CommunityCard[];
+  picked: string[];
+  onTogglePicked: (slug: string) => void;
+}) {
   return (
     <>
-      <h1 className="onb-q-title">What&apos;s your hook?</h1>
+      <h1 className="onb-q-title">What&apos;s your hook + where should it land?</h1>
       <p className="onb-q-sub">
-        One sentence — the kind that gets repeated in DMs. This becomes
-        your problem_statement on the launch.
+        Hook becomes your problem_statement. Pick 1–6 communities — the launch fans into those.
       </p>
       <div className="founders-fields">
         <Field label="Hook">
@@ -445,6 +477,41 @@ function Step5({ data, set }: { data: State; set: <K extends keyof State>(k: K, 
             value={data.pitch}
             onChange={(e) => set("pitch", e.target.value)}
           />
+        </Field>
+        <Field
+          label={`Target communities (${picked.length} of 6)`}
+          required
+        >
+          {communities.length === 0 ? (
+            <span className="mono" style={{ color: "var(--ink-3)", fontSize: 12 }}>
+              loading…
+            </span>
+          ) : (
+            <div className="founders-chips">
+              {communities.map((c, i) => {
+                const isPicked = picked.includes(c.slug);
+                const atCap = !isPicked && picked.length >= 6;
+                return (
+                  <button
+                    key={c.slug}
+                    type="button"
+                    className={`founders-chip ${isPicked ? "on" : ""}`}
+                    onClick={() => !atCap && onTogglePicked(c.slug)}
+                    disabled={atCap}
+                    style={{
+                      animationDelay: `${i * 30}ms`,
+                      opacity: atCap ? 0.4 : 1,
+                      cursor: atCap ? "not-allowed" : "pointer",
+                    }}
+                    title={c.description}
+                  >
+                    <span className="founders-chip-check">{isPicked ? "✓" : "+"}</span>
+                    <span>{c.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </Field>
       </div>
     </>
@@ -475,55 +542,10 @@ function Field({
   );
 }
 
-// =============================================================================
-// Community chip picker (inline below the graph)
-// =============================================================================
-function CommunityChips({
-  tags,
-  picked,
-  onToggle,
-}: {
-  tags: string[];
-  picked: string[];
-  onToggle: (slug: string) => void;
-}) {
-  const ranked = useMemo(() => {
-    const tagSet = new Set(tags);
-    return [...MESH_COMMUNITIES]
-      .map((c) => ({
-        ...c,
-        slug: c.id,
-        overlap: c.tags.filter((t) => tagSet.has(t)).length,
-      }))
-      .sort((a, b) => b.overlap - a.overlap || b.members - a.members)
-      .slice(0, 8);
-  }, [tags]);
-
-  return (
-    <div className="onb-graph-tags" style={{ marginTop: 12 }}>
-      {ranked.map((c) => {
-        const isPicked = picked.includes(c.slug);
-        return (
-          <button
-            key={c.slug}
-            className="onb-graph-tag"
-            style={{
-              cursor: "pointer",
-              background: isPicked ? "var(--accent-soft)" : undefined,
-              color: isPicked ? "var(--ink-0)" : undefined,
-              border: isPicked ? "1px solid var(--accent)" : undefined,
-            }}
-            onClick={() => onToggle(c.slug)}
-            title={c.name}
-          >
-            {isPicked ? "✓ " : "+ "}
-            {c.name}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+// (Old CommunityChips component removed — picker moved into Step5
+// and now reads from real GET /api/communities, not the hardcoded
+// MESH_COMMUNITIES list. Old picker lived in .onb-graph-meta which
+// has pointer-events:none so clicks never fired.)
 
 // =============================================================================
 // Pending screen

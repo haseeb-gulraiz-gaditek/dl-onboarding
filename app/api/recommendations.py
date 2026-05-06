@@ -31,17 +31,14 @@ async def get_recommendations(
     payload: dict = Body(default_factory=dict),
     user: dict[str, Any] = Depends(require_role("user")),
 ) -> RecommendationsResponse:
-    """F-REC-1, F-REC-2: gate on >=3 answers, dispatch to engine."""
-    answered = await count_distinct_answers(user["_id"])
-    if answered < MIN_ANSWERS_FOR_RECS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "no_profile_yet",
-                "min_answers": MIN_ANSWERS_FOR_RECS,
-            },
-        )
+    """F-REC-1: dispatch to engine regardless of answer depth.
 
+    Cycle #15: the original >=3 answers gate was added in cycle #6
+    when the only path to a profile vector was the open question
+    bank. The live flow now produces a usable profile vector after
+    Q1, so the gate just blocks /home from showing recs unnecessarily.
+    The engine itself returns an empty list when nothing matches —
+    that's the honest signal."""
     count_raw = payload.get("count", DEFAULT_COUNT)
     try:
         count = int(count_raw)

@@ -54,23 +54,23 @@ async def test_unauthenticated_cannot_call_recommendations(app_client):
 
 
 @pytest.mark.asyncio
-async def test_zero_answers_returns_no_profile_yet(app_client, seed_recs_catalog):
-    """F-REC-2: brand-new user with 0 answers → 400 no_profile_yet."""
+async def test_zero_answers_returns_empty_recs(app_client, seed_recs_catalog):
+    """Cycle #15: gate removed — endpoint returns 200 with whatever
+    the engine produces (likely empty for a user with no profile)."""
     body = await signup_user(app_client, "newbie@example.com")
     r = await app_client.post(
         "/api/recommendations",
         json={},
         headers=auth_header(body["jwt"]),
     )
-    assert r.status_code == 400, r.text
-    detail = r.json()["detail"]
-    assert detail["error"] == "no_profile_yet"
-    assert detail["min_answers"] == 3
+    assert r.status_code == 200, r.text
+    payload = r.json()
+    assert "recommendations" in payload
 
 
 @pytest.mark.asyncio
-async def test_two_answers_returns_no_profile_yet(app_client, seed_recs_catalog):
-    """F-REC-2: 2 answers (below threshold) → 400 no_profile_yet."""
+async def test_two_answers_returns_recs_or_empty(app_client, seed_recs_catalog):
+    """Cycle #15: 2 answers no longer 400s — engine runs unconditionally."""
     body = await signup_user(app_client, "two@example.com")
     from bson import ObjectId
     user_id = ObjectId(body["user"]["id"])
@@ -81,8 +81,8 @@ async def test_two_answers_returns_no_profile_yet(app_client, seed_recs_catalog)
         json={},
         headers=auth_header(body["jwt"]),
     )
-    assert r.status_code == 400
-    assert r.json()["detail"]["error"] == "no_profile_yet"
+    assert r.status_code == 200
+    assert "recommendations" in r.json()
 
 
 @pytest.mark.asyncio

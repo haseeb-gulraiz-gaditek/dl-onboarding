@@ -1,14 +1,21 @@
 "use client";
 
-// Mesh — Founder launch flow.
-// Per spec-delta frontend-core F-FE-8.
+// Mesh — Founder launch flow (rewritten cycle #13 audit pass).
 //
-// 6-step form serializes onto cycle #8's POST /api/founders/launch:
-//   product_url            → required, http(s)
-//   problem_statement      ← pitch (or oneliner if pitch empty)
-//   icp_description        ← concat of category + audience + pricing + replaces
-//   existing_presence_links ← parsed CSV from a single text input
-//   target_community_slugs ← clicked nodes on the live CommunityGraph (1..6)
+// Backend takes 5 fields (cycle #8 + #9):
+//   product_url, problem_statement, icp_description,
+//   existing_presence_links[], target_community_slugs (1..6).
+//
+// Form is 5 steps + a community picker. Per-step "Continue" gates
+// on that step's required fields so the user never gets a step-1
+// validation error on the last step.
+//   Step 1: name + URL + oneliner + presence (URL validated inline)
+//   Step 2: category
+//   Step 3: ICP — 3 text fields (who, doing what, broken today)
+//   Step 4: pricing
+//   Step 5: pitch (one-liner) — final step, contains submit
+// Communities are picked by tapping nodes on the graph at any time;
+// the chip row near the submit button surfaces the count.
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -24,212 +31,138 @@ import { api, ApiError } from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
 import type { LaunchResponse, LaunchSubmitRequest } from "@/lib/api-types";
 
-interface Opt { l: string; tags: string[] }
-interface Field { id: string; kind: "text" | "longtext" | "pick" | "pick-multi"; label: string; placeholder?: string; opts?: Opt[]; required?: boolean }
-interface Step { id: string; title: string; sub?: string; fields: Field[] }
-
-const STEPS: Step[] = [
-  {
-    id: "product",
-    title: "What are you building?",
-    sub: "We need the URL — it's how the rest of Mesh links to you.",
-    fields: [
-      { id: "name", kind: "text", label: "Product name (display)", placeholder: "Granola, Linear, Reflect" },
-      { id: "product_url", kind: "text", label: "Product URL (required)", placeholder: "https://example.com", required: true },
-      { id: "oneliner", kind: "text", label: "One-liner", placeholder: "AI meeting notes that live next to your calendar" },
-      { id: "presence", kind: "text", label: "Existing presence (CSV — X / LinkedIn / GitHub)", placeholder: "https://x.com/yours, https://github.com/yours" },
-    ],
-  },
-  {
-    id: "category",
-    title: "Where does it fit?",
-    fields: [
-      {
-        id: "category",
-        kind: "pick",
-        label: "Category",
-        opts: [
-          { l: "AI / agent", tags: ["ai"] },
-          { l: "Writing & docs", tags: ["writing", "docs"] },
-          { l: "PM / collaboration", tags: ["pm", "meetings"] },
-          { l: "Dev tooling", tags: ["dev", "ai"] },
-          { l: "Design tooling", tags: ["design"] },
-          { l: "Sales / CRM / outreach", tags: ["sales", "crm", "email"] },
-          { l: "Browser / productivity", tags: ["browser", "productivity"] },
-        ],
-      },
-    ],
-  },
-  {
-    id: "replaces",
-    title: "What does it replace or sit next to?",
-    fields: [
-      {
-        id: "replaces",
-        kind: "pick-multi",
-        label: "Tools (multi-pick)",
-        opts: [
-          { l: "Notion", tags: ["writing", "pm", "docs"] },
-          { l: "Linear", tags: ["pm", "dev"] },
-          { l: "Figma", tags: ["design"] },
-          { l: "Cursor", tags: ["dev", "ai"] },
-          { l: "ChatGPT", tags: ["ai"] },
-          { l: "Gmail", tags: ["email"] },
-          { l: "Slack", tags: ["messaging"] },
-          { l: "Spreadsheets", tags: ["data"] },
-        ],
-      },
-    ],
-  },
-  {
-    id: "audience",
-    title: "Who is it for, really?",
-    fields: [
-      {
-        id: "audience",
-        kind: "pick-multi",
-        label: "Roles",
-        opts: [
-          { l: "Solo founders", tags: ["founders", "productivity"] },
-          { l: "Staff PMs", tags: ["pm", "docs"] },
-          { l: "Eng leads", tags: ["dev", "pm"] },
-          { l: "Design leads", tags: ["design", "pm"] },
-          { l: "Growth / marketers", tags: ["sales", "crm", "email"] },
-          { l: "Researchers", tags: ["research", "ai"] },
-        ],
-      },
-    ],
-  },
-  {
-    id: "pricing",
-    title: "How does it work, money-wise?",
-    fields: [
-      {
-        id: "pricing",
-        kind: "pick",
-        label: "Pricing",
-        opts: [
-          { l: "Free / open source", tags: ["productivity"] },
-          { l: "Freemium", tags: ["productivity"] },
-          { l: "Per-seat SaaS", tags: ["pm"] },
-          { l: "One-time / lifetime", tags: ["productivity"] },
-          { l: "Usage-based", tags: ["ai", "dev"] },
-        ],
-      },
-    ],
-  },
-  {
-    id: "pitch",
-    title: "What's your hook?",
-    sub: "Becomes problem_statement. Skip if you'd rather we use the one-liner.",
-    fields: [
-      {
-        id: "pitch",
-        kind: "longtext",
-        label: "Hook (optional)",
-        placeholder: "Replaces the 40 minutes you lose every week to copy-pasting between Notion and Linear.",
-      },
-    ],
-  },
+const CATEGORY_OPTS = [
+  { l: "AI / agent", tags: ["ai"] },
+  { l: "Writing & docs", tags: ["writing", "docs"] },
+  { l: "PM / collaboration", tags: ["pm", "meetings"] },
+  { l: "Dev tooling", tags: ["dev", "ai"] },
+  { l: "Design tooling", tags: ["design"] },
+  { l: "Sales / CRM / outreach", tags: ["sales", "crm", "email"] },
+  { l: "Browser / productivity", tags: ["browser", "productivity"] },
 ];
 
-type FieldValue = string | Opt | Opt[] | undefined;
+const PRICING_OPTS = [
+  { l: "Free / open source", tags: ["productivity"] },
+  { l: "Freemium", tags: ["productivity"] },
+  { l: "Per-seat SaaS", tags: ["pm"] },
+  { l: "One-time / lifetime", tags: ["productivity"] },
+  { l: "Usage-based", tags: ["ai", "dev"] },
+];
+
+interface State {
+  // step 1
+  name: string;
+  product_url: string;
+  oneliner: string;
+  presence: string;
+  // step 2
+  category: string | null;
+  // step 3 — ICP
+  icp_who: string;
+  icp_jtbd: string;
+  icp_pain: string;
+  // step 4
+  pricing: string | null;
+  // step 5
+  pitch: string;
+}
+
+const EMPTY: State = {
+  name: "",
+  product_url: "",
+  oneliner: "",
+  presence: "",
+  category: null,
+  icp_who: "",
+  icp_jtbd: "",
+  icp_pain: "",
+  pricing: null,
+  pitch: "",
+};
+
+const TOTAL_STEPS = 5;
+
+const isHttp = (s: string) => s.startsWith("http://") || s.startsWith("https://");
 
 export default function FoundersLaunchPage() {
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   useEffect(() => {
-    if (!isAuthenticated()) router.replace("/onboarding");
+    if (!isAuthenticated()) router.replace("/login");
     else setAuthChecked(true);
   }, [router]);
 
-  const [step, setStep] = useState(0);
-  const [data, setData] = useState<Record<string, FieldValue>>({});
+  const [step, setStep] = useState(1);
+  const [data, setData] = useState<State>(EMPTY);
   const [pickedSlugs, setPickedSlugs] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<LaunchResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  const set = <K extends keyof State>(k: K, v: State[K]) =>
+    setData((prev) => ({ ...prev, [k]: v }));
+
+  // Live tags for the CommunityGraph (drives match suggestions).
   const tags = useMemo(() => {
     const t: string[] = [];
-    Object.values(data).forEach((v) => {
-      if (Array.isArray(v)) v.forEach((o) => o?.tags && t.push(...o.tags));
-      else if (v && typeof v !== "string" && v.tags) t.push(...v.tags);
-    });
+    const cat = CATEGORY_OPTS.find((c) => c.l === data.category);
+    if (cat) t.push(...cat.tags);
+    const pr = PRICING_OPTS.find((p) => p.l === data.pricing);
+    if (pr) t.push(...pr.tags);
     return t;
-  }, [data]);
+  }, [data.category, data.pricing]);
 
-  const setFieldValue = (fieldId: string, val: FieldValue) =>
-    setData((prev) => ({ ...prev, [fieldId]: val }));
-
-  const toggleMulti = (fieldId: string, opt: Opt) => {
-    setData((prev) => {
-      const cur = Array.isArray(prev[fieldId]) ? (prev[fieldId] as Opt[]) : [];
-      const exists = cur.find((o) => o.l === opt.l);
-      const next = exists ? cur.filter((o) => o.l !== opt.l) : [...cur, opt];
-      return { ...prev, [fieldId]: next };
-    });
+  // Per-step gating.
+  const canAdvance = (s: number): boolean => {
+    if (s === 1) {
+      if (!data.name.trim()) return false;
+      if (!isHttp(data.product_url.trim())) return false;
+      return true;
+    }
+    if (s === 2) return !!data.category;
+    if (s === 3) {
+      // At least one ICP field non-empty.
+      return !!(data.icp_who.trim() || data.icp_jtbd.trim() || data.icp_pain.trim());
+    }
+    if (s === 4) return !!data.pricing;
+    if (s === 5) return data.pitch.trim().length > 0;
+    return true;
   };
 
-  const total = STEPS.length;
-  const cur = STEPS[step];
-
   const submit = async () => {
-    const product_url = ((data.product_url as string) || "").trim();
-    if (!product_url.startsWith("http")) {
-      setErr("Product URL must start with http:// or https://.");
-      return;
-    }
+    setErr(null);
     if (pickedSlugs.length === 0) {
-      setErr("Pick at least one community by tapping nodes on the graph.");
+      setErr("Tap at least one community on the graph to target.");
       return;
     }
-    if (pickedSlugs.length > 6) {
-      setErr("Pick at most 6 communities.");
-      return;
-    }
-
-    const oneliner = ((data.oneliner as string) || "").trim();
-    const pitch = ((data.pitch as string) || "").trim();
-    const problem_statement = pitch || oneliner || "Founder launch on Mesh.";
-
-    const category = (data.category as Opt | undefined)?.l;
-    const pricing = (data.pricing as Opt | undefined)?.l;
-    const audience = ((data.audience as Opt[]) || []).map((o) => o.l);
-    const replaces = ((data.replaces as Opt[]) || []).map((o) => o.l);
-
     const icp_description = [
-      category && `Category: ${category}`,
-      audience.length && `Audience: ${audience.join(", ")}`,
-      pricing && `Pricing: ${pricing}`,
-      replaces.length && `Replaces / sits next to: ${replaces.join(", ")}`,
+      data.icp_who.trim() && `Who: ${data.icp_who.trim()}`,
+      data.icp_jtbd.trim() && `Job to be done: ${data.icp_jtbd.trim()}`,
+      data.icp_pain.trim() && `Today's pain: ${data.icp_pain.trim()}`,
     ]
       .filter(Boolean)
       .join("\n\n");
 
-    const presenceCsv = ((data.presence as string) || "")
+    const presence = data.presence
       .split(",")
       .map((s) => s.trim())
-      .filter((s) => s.startsWith("http"));
+      .filter(isHttp);
 
     const payload: LaunchSubmitRequest = {
-      product_url,
-      problem_statement,
-      icp_description: icp_description || "(see problem statement)",
-      existing_presence_links: presenceCsv,
+      product_url: data.product_url.trim(),
+      problem_statement: data.pitch.trim() || data.oneliner.trim() || "Founder launch.",
+      icp_description: icp_description || data.oneliner.trim() || "(see hook)",
+      existing_presence_links: presence,
       target_community_slugs: pickedSlugs,
     };
 
-    setErr(null);
     setSubmitting(true);
     try {
       const resp = await api.post<LaunchResponse>("/api/founders/launch", payload);
       setSubmitted(resp);
     } catch (e) {
-      const msg = e instanceof ApiError
-        ? typeof e.body === "object" && e.body && "detail" in e.body
-          ? JSON.stringify((e.body as { detail: unknown }).detail)
-          : "Submission failed."
+      const msg = e instanceof ApiError && typeof e.body === "object" && e.body && "detail" in e.body
+        ? JSON.stringify((e.body as { detail: unknown }).detail)
         : "Submission failed.";
       setErr(msg);
     } finally {
@@ -238,10 +171,7 @@ export default function FoundersLaunchPage() {
   };
 
   if (!authChecked) return null;
-
-  if (submitted) {
-    return <PendingScreen launch={submitted} pickedSlugs={pickedSlugs} />;
-  }
+  if (submitted) return <PendingScreen launch={submitted} pickedSlugs={pickedSlugs} />;
 
   return (
     <div className="onb-root founders-root">
@@ -254,11 +184,11 @@ export default function FoundersLaunchPage() {
             <span className="onb-graph-dot" />
             <span>
               {pickedSlugs.length === 0
-                ? `tap nodes to pick target communities (1..6)`
-                : `${pickedSlugs.length} community${pickedSlugs.length === 1 ? "" : " ies"} picked`}
+                ? "tap below to pick target communities (1..6)"
+                : `${pickedSlugs.length} of 6 communities picked`}
             </span>
           </div>
-          <CommunityPicker
+          <CommunityChips
             tags={tags}
             picked={pickedSlugs}
             onToggle={(slug) =>
@@ -290,40 +220,30 @@ export default function FoundersLaunchPage() {
           <div className="onb-q-meta">
             <button
               className="onb-q-back mono"
-              disabled={step === 0}
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              disabled={step === 1}
+              onClick={() => setStep((s) => Math.max(1, s - 1))}
             >
               ← back
             </button>
             <span className="mono onb-q-count">
-              Step {step + 1} of {total}
+              Step {step} of {TOTAL_STEPS}
             </span>
             <div className="onb-q-bars">
-              {Array.from({ length: total }).map((_, i) => (
+              {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
                 <span
                   key={i}
-                  className={`onb-q-bar ${i < step ? "done" : i === step ? "on" : ""}`}
+                  className={`onb-q-bar ${i + 1 < step ? "done" : i + 1 === step ? "on" : ""}`}
                 />
               ))}
             </div>
           </div>
 
           <div className="onb-q-card founders-card">
-            <h1 className="onb-q-title">{cur.title}</h1>
-            {cur.sub && <p className="onb-q-sub">{cur.sub}</p>}
-
-            <div className="founders-fields">
-              {cur.fields.map((f) => (
-                <FieldRow
-                  key={f.id}
-                  field={f}
-                  value={data[f.id]}
-                  onText={(v) => setFieldValue(f.id, v)}
-                  onPick={(opt) => setFieldValue(f.id, opt)}
-                  onToggle={(opt) => toggleMulti(f.id, opt)}
-                />
-              ))}
-            </div>
+            {step === 1 && <Step1 data={data} set={set} />}
+            {step === 2 && <Step2 data={data} set={set} />}
+            {step === 3 && <Step3 data={data} set={set} />}
+            {step === 4 && <Step4 data={data} set={set} />}
+            {step === 5 && <Step5 data={data} set={set} />}
 
             {err && (
               <div className="mono" style={{ color: "var(--warn)", marginTop: 16 }}>
@@ -332,14 +252,26 @@ export default function FoundersLaunchPage() {
             )}
 
             <div className="onb-q-multi-foot">
-              <span className="mono onb-q-skip">your data stays — refine anytime ↘</span>
-              {step < total - 1 ? (
-                <MButton onClick={() => setStep((s) => s + 1)}>
+              <span className="mono onb-q-skip">
+                {pickedSlugs.length > 0
+                  ? `${pickedSlugs.length} community${pickedSlugs.length === 1 ? "" : " ies"} picked`
+                  : "pick communities on the graph ↘"}
+              </span>
+              {step < TOTAL_STEPS ? (
+                <MButton
+                  onClick={() => canAdvance(step) && setStep((s) => s + 1)}
+                  variant={canAdvance(step) ? "primary" : "ghost"}
+                >
                   Continue →
                 </MButton>
               ) : (
-                <MButton onClick={submit} variant="primary">
-                  {submitting ? "Submitting…" : `Submit launch (${pickedSlugs.length}) →`}
+                <MButton
+                  onClick={submit}
+                  variant={
+                    canAdvance(5) && pickedSlugs.length > 0 ? "primary" : "ghost"
+                  }
+                >
+                  {submitting ? "Submitting…" : "Submit launch →"}
                 </MButton>
               )}
             </div>
@@ -350,114 +282,203 @@ export default function FoundersLaunchPage() {
   );
 }
 
-function FieldRow({
-  field,
-  value,
-  onText,
-  onPick,
-  onToggle,
-}: {
-  field: Field;
-  value: FieldValue;
-  onText: (v: string) => void;
-  onPick: (opt: Opt) => void;
-  onToggle: (opt: Opt) => void;
-}) {
-  if (field.kind === "text") {
-    return (
-      <div className="founders-field">
-        <label className="founders-label mono">
-          {field.label}
-          {field.required && (
-            <span className="founders-label-hint" style={{ color: "var(--accent)" }}>
-              *
+// =============================================================================
+// Steps
+// =============================================================================
+
+function Step1({ data, set }: { data: State; set: <K extends keyof State>(k: K, v: State[K]) => void }) {
+  const urlInvalid =
+    data.product_url.length > 0 && !isHttp(data.product_url.trim());
+  return (
+    <>
+      <h1 className="onb-q-title">What are you building?</h1>
+      <p className="onb-q-sub">We need the URL — it&apos;s how the rest of Mesh links to you.</p>
+      <div className="founders-fields">
+        <Field label="Product name (display)">
+          <input
+            className="m-input founders-input"
+            placeholder="Granola, Linear, Reflect"
+            value={data.name}
+            onChange={(e) => set("name", e.target.value)}
+            autoFocus
+          />
+        </Field>
+        <Field label="Product URL (required)" required>
+          <input
+            className="m-input founders-input"
+            placeholder="https://example.com"
+            value={data.product_url}
+            onChange={(e) => set("product_url", e.target.value)}
+          />
+          {urlInvalid && (
+            <span className="mono" style={{ color: "var(--warn)", fontSize: 12 }}>
+              must start with http:// or https://
             </span>
           )}
-        </label>
-        <input
-          className="m-input founders-input"
-          placeholder={field.placeholder}
-          value={(value as string) || ""}
-          onChange={(e) => onText(e.target.value)}
-        />
+        </Field>
+        <Field label="One-liner">
+          <input
+            className="m-input founders-input"
+            placeholder="AI meeting notes that live next to your calendar"
+            value={data.oneliner}
+            onChange={(e) => set("oneliner", e.target.value)}
+          />
+        </Field>
+        <Field label="Existing presence (CSV — X / LinkedIn / GitHub / site)">
+          <input
+            className="m-input founders-input"
+            placeholder="https://x.com/yours, https://github.com/yours"
+            value={data.presence}
+            onChange={(e) => set("presence", e.target.value)}
+          />
+        </Field>
       </div>
-    );
-  }
-  if (field.kind === "longtext") {
-    return (
-      <div className="founders-field">
-        <label className="founders-label mono">{field.label}</label>
-        <textarea
-          className="m-input founders-input founders-textarea"
-          placeholder={field.placeholder}
-          value={(value as string) || ""}
-          rows={3}
-          onChange={(e) => onText(e.target.value)}
-        />
+    </>
+  );
+}
+
+function Step2({ data, set }: { data: State; set: <K extends keyof State>(k: K, v: State[K]) => void }) {
+  return (
+    <>
+      <h1 className="onb-q-title">Where does it fit?</h1>
+      <p className="onb-q-sub">Pick the closest. We&apos;ll let users refine it later.</p>
+      <div className="onb-q-opts">
+        {CATEGORY_OPTS.map((opt, i) => (
+          <button
+            key={opt.l}
+            className={`onb-q-opt ${data.category === opt.l ? "on" : ""}`}
+            onClick={() => set("category", opt.l)}
+            style={{ animationDelay: `${i * 50}ms` }}
+          >
+            <span className="onb-q-bullet">
+              <span className="onb-radio">
+                {data.category === opt.l ? <span className="onb-radio-dot" /> : null}
+              </span>
+            </span>
+            <span className="onb-q-label">{opt.l}</span>
+          </button>
+        ))}
       </div>
-    );
-  }
-  if (field.kind === "pick") {
-    const v = value as Opt | undefined;
-    return (
-      <div className="founders-field">
-        <label className="founders-label mono">{field.label}</label>
-        <div className="onb-q-opts">
-          {field.opts!.map((opt, i) => {
-            const picked = v && v.l === opt.l;
-            return (
-              <button
-                key={opt.l}
-                className={`onb-q-opt ${picked ? "on" : ""}`}
-                onClick={() => onPick(opt)}
-                style={{ animationDelay: `${i * 50}ms` }}
-              >
-                <span className="onb-q-bullet">
-                  <span className="onb-radio">
-                    {picked ? <span className="onb-radio-dot" /> : null}
-                  </span>
-                </span>
-                <span className="onb-q-label">{opt.l}</span>
-              </button>
-            );
-          })}
-        </div>
+    </>
+  );
+}
+
+function Step3({ data, set }: { data: State; set: <K extends keyof State>(k: K, v: State[K]) => void }) {
+  return (
+    <>
+      <h1 className="onb-q-title">Who is it for?</h1>
+      <p className="onb-q-sub">
+        The truth, not the pitch deck. Three sentences are plenty.
+      </p>
+      <div className="founders-fields">
+        <Field label="Who they are">
+          <input
+            className="m-input founders-input"
+            placeholder="Staff PMs at 50-300 person SaaS companies"
+            value={data.icp_who}
+            onChange={(e) => set("icp_who", e.target.value)}
+          />
+        </Field>
+        <Field label="What they're trying to do">
+          <input
+            className="m-input founders-input"
+            placeholder="Get sprint planning done without 4 tools"
+            value={data.icp_jtbd}
+            onChange={(e) => set("icp_jtbd", e.target.value)}
+          />
+        </Field>
+        <Field label="What's broken about today's solution">
+          <input
+            className="m-input founders-input"
+            placeholder="Notion → Linear copy-paste eats 40 min/week"
+            value={data.icp_pain}
+            onChange={(e) => set("icp_pain", e.target.value)}
+          />
+        </Field>
       </div>
-    );
-  }
-  if (field.kind === "pick-multi") {
-    const arr = Array.isArray(value) ? (value as Opt[]) : [];
-    return (
-      <div className="founders-field">
-        <label className="founders-label mono">
-          {field.label} <span className="founders-label-hint">multi-select</span>
-        </label>
-        <div className="founders-chips">
-          {field.opts!.map((opt, i) => {
-            const picked = arr.find((o) => o.l === opt.l);
-            return (
-              <button
-                key={opt.l}
-                className={`founders-chip ${picked ? "on" : ""}`}
-                onClick={() => onToggle(opt)}
-                style={{ animationDelay: `${i * 30}ms` }}
-              >
-                <span className="founders-chip-check">{picked ? "✓" : "+"}</span>
-                <span>{opt.l}</span>
-              </button>
-            );
-          })}
-        </div>
+    </>
+  );
+}
+
+function Step4({ data, set }: { data: State; set: <K extends keyof State>(k: K, v: State[K]) => void }) {
+  return (
+    <>
+      <h1 className="onb-q-title">How does it work, money-wise?</h1>
+      <p className="onb-q-sub">
+        Affects which communities care. r/replacing-saas-with-ai is allergic to per-seat pricing.
+      </p>
+      <div className="onb-q-opts">
+        {PRICING_OPTS.map((opt, i) => (
+          <button
+            key={opt.l}
+            className={`onb-q-opt ${data.pricing === opt.l ? "on" : ""}`}
+            onClick={() => set("pricing", opt.l)}
+            style={{ animationDelay: `${i * 50}ms` }}
+          >
+            <span className="onb-q-bullet">
+              <span className="onb-radio">
+                {data.pricing === opt.l ? <span className="onb-radio-dot" /> : null}
+              </span>
+            </span>
+            <span className="onb-q-label">{opt.l}</span>
+          </button>
+        ))}
       </div>
-    );
-  }
-  return null;
+    </>
+  );
+}
+
+function Step5({ data, set }: { data: State; set: <K extends keyof State>(k: K, v: State[K]) => void }) {
+  return (
+    <>
+      <h1 className="onb-q-title">What&apos;s your hook?</h1>
+      <p className="onb-q-sub">
+        One sentence — the kind that gets repeated in DMs. This becomes
+        your problem_statement on the launch.
+      </p>
+      <div className="founders-fields">
+        <Field label="Hook">
+          <textarea
+            className="m-input founders-input founders-textarea"
+            placeholder="Replaces the 40 minutes you lose every week to copy-pasting between Notion and Linear."
+            rows={3}
+            value={data.pitch}
+            onChange={(e) => set("pitch", e.target.value)}
+          />
+        </Field>
+      </div>
+    </>
+  );
+}
+
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="founders-field">
+      <label className="founders-label mono">
+        {label}
+        {required && (
+          <span className="founders-label-hint" style={{ color: "var(--accent)" }}>
+            *
+          </span>
+        )}
+      </label>
+      {children}
+    </div>
+  );
 }
 
 // =============================================================================
-// Community picker — text-list overlay on the graph for explicit selection.
+// Community chip picker (inline below the graph)
 // =============================================================================
-function CommunityPicker({
+function CommunityChips({
   tags,
   picked,
   onToggle,
@@ -536,15 +557,16 @@ function PendingScreen({
             is in the queue.
           </h1>
           <p className="onb-result-sub body-lg">
-            Mesh staff verifies launches within ~24 hours. We&apos;ll notify
-            you when it&apos;s approved — at that point your launch fans into
-            your {pickedSlugs.length} target communities and the matched-user
-            concierge nudge fires.
+            Mesh staff verifies launches within ~24 hours. You&apos;ll see
+            it move to <em>approved</em> on your dashboard once it does — and
+            the launch fans out into the {pickedSlugs.length} community
+            {pickedSlugs.length === 1 ? "" : "ies"} you picked plus the matched
+            user nudges.
           </p>
           <div className="onb-result-cta in">
             <Link href="/home">
               <MButton size="lg" trailing="→">
-                Back to home
+                Back to dashboard
               </MButton>
             </Link>
           </div>

@@ -141,6 +141,26 @@ export interface ProfileSummaryResponse {
   all_answer_values: string[];
 }
 
+// ---- Founder dashboard (cycle #11) ----
+
+export type VerificationStatus = "pending" | "approved" | "rejected";
+
+export interface DashboardLaunchCard {
+  launch_id: string;
+  product_url: string;
+  approved_tool_slug: string | null;
+  verification_status: VerificationStatus;
+  created_at: string;
+  matched_count: number;
+  tell_me_more_count: number;
+  skip_count: number;
+  total_clicks: number;
+}
+
+export interface DashboardResponse {
+  dashboard: DashboardLaunchCard[];
+}
+
 // ---- Notifications (cycle #12) ----
 
 export interface NotificationCard {

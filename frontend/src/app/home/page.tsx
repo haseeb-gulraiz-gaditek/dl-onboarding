@@ -14,6 +14,8 @@ import { api, ApiError } from "@/lib/api";
 import { isAuthenticated, logout } from "@/lib/auth";
 import { tagsForAnswerValue } from "@/lib/tag-map";
 import type {
+  DashboardLaunchCard,
+  DashboardResponse,
   JoinedCommunityCard,
   JoinedCommunityListResponse,
   NotificationCard,
@@ -73,6 +75,7 @@ export default function HomePage() {
   const [stack, setStack] = useState<StackToolEntry[]>([]);
   const [profileTags, setProfileTags] = useState<string[]>([]);
   const [communities, setCommunities] = useState<JoinedCommunityCard[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardLaunchCard[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -83,21 +86,19 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fail-soft loader. Sets `user` first as the gating call; every
-  // other panel degrades to its empty default if its endpoint fails
-  // (e.g., founders get 403 on user-only endpoints — they still see
-  // /home with their inbox + greeting).
+  // Fail-soft loader. /api/me is the gating call; every other
+  // panel degrades to its empty default if its endpoint fails.
   const loadAll = async () => {
     let me: UserPublic;
     try {
       me = await api.get<UserPublic>("/api/me");
     } catch (e) {
       console.error("[home] /api/me failed", e);
-      return; // 401 already handled by api.ts (redirects to /login)
+      return;
     }
     setUser(me);
 
-    // Notifications + unread count work for both roles.
+    // Notifications work for both roles.
     const [uc, nl] = await Promise.allSettled([
       api.get<UnreadCountResponse>("/api/me/notifications/unread-count"),
       api.get<NotificationListResponse>(
@@ -107,10 +108,18 @@ export default function HomePage() {
     if (uc.status === "fulfilled") setUnread(uc.value.count);
     if (nl.status === "fulfilled") setNotes(nl.value.notifications);
 
-    // User-role-only endpoints. Founders get 403 here; we silently
-    // skip without breaking the page.
-    if (me.role_type !== "user") return;
+    if (me.role_type === "founder") {
+      // Founder dashboard (cycle #11).
+      try {
+        const d = await api.get<DashboardResponse>("/api/founders/dashboard");
+        setDashboard(d.dashboard);
+      } catch (e) {
+        console.warn("[home] dashboard load failed", e);
+      }
+      return;
+    }
 
+    // User-only endpoints.
     const [r, ps, mc] = await Promise.allSettled([
       api.post<RecommendationsResponse>("/api/recommendations", { count: 5 }),
       api.get<ProfileSummaryResponse>("/api/me/profile-summary"),
@@ -128,8 +137,6 @@ export default function HomePage() {
     }
     if (ps.status === "fulfilled") {
       setStack(ps.value.stack_tools);
-      // Compute graph tags from every answer value via the existing
-      // tag-map helper (same module used in /onboarding's live graph).
       const tags: string[] = [];
       for (const v of ps.value.all_answer_values) {
         tags.push(...tagsForAnswerValue(v));
@@ -147,6 +154,21 @@ export default function HomePage() {
     );
   }
 
+  // Founder home: dedicated dashboard view (no user-side stack /
+  // recommendations / communities sections).
+  if (user.role_type === "founder") {
+    return (
+      <FounderHome
+        user={user}
+        unread={unread}
+        notes={notes}
+        dashboard={dashboard}
+        onLogout={() => logout()}
+      />
+    );
+  }
+
+  // User home: existing 3-column shell.
   return (
     <div className="home-root">
       <HomeLeftRail
@@ -500,5 +522,221 @@ function HomeRightRail({ tags }: { tags: string[] }) {
         refine profile ↗
       </Link>
     </aside>
+  );
+}
+
+// =============================================================================
+// Founder home — launch dashboard.
+// Cycle #11 backend (/api/founders/dashboard) provides the data.
+// =============================================================================
+function FounderHome({
+  user,
+  unread,
+  notes,
+  dashboard,
+  onLogout,
+}: {
+  user: UserPublic;
+  unread: number;
+  notes: NotificationCard[];
+  dashboard: DashboardLaunchCard[];
+  onLogout: () => void;
+}) {
+  const total = dashboard.length;
+  const approved = dashboard.filter((l) => l.verification_status === "approved").length;
+  const pending = dashboard.filter((l) => l.verification_status === "pending").length;
+  const rejected = dashboard.filter((l) => l.verification_status === "rejected").length;
+
+  return (
+    <div className="home-root no-right">
+      <aside className="home-rail home-rail-left">
+        <div className="home-brand-row">
+          <Link href="/" className="home-brand">
+            <MeshMark size={20} />
+            <span>Mesh</span>
+          </Link>
+        </div>
+        <nav className="home-nav">
+          <Link href="/founders/launch" className="home-nav-item">
+            <span className="home-nav-glyph">+</span>
+            <span className="home-nav-label">New launch</span>
+          </Link>
+        </nav>
+
+        <div className="home-rail-section">
+          <div className="home-rail-heading mono">At a glance</div>
+          <div className="home-stack-list">
+            <div className="home-stack-item">
+              <div className="home-stack-meta">
+                <div className="home-stack-name">{total}</div>
+                <div className="mono home-stack-status">total launches</div>
+              </div>
+            </div>
+            <div className="home-stack-item">
+              <div className="home-stack-meta">
+                <div className="home-stack-name">{approved}</div>
+                <div className="mono home-stack-status">approved</div>
+              </div>
+            </div>
+            <div className="home-stack-item">
+              <div className="home-stack-meta">
+                <div className="home-stack-name">{pending}</div>
+                <div className="mono home-stack-status">pending review</div>
+              </div>
+            </div>
+            {rejected > 0 && (
+              <div className="home-stack-item">
+                <div className="home-stack-meta">
+                  <div className="home-stack-name">{rejected}</div>
+                  <div className="mono home-stack-status">rejected</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="home-rail-foot">
+          <div className="home-profile">
+            <div className="home-profile-avatar">
+              {user.display_name[0]?.toUpperCase() || "?"}
+            </div>
+            <div className="home-profile-meta">
+              <div className="home-profile-name">@{user.display_name}</div>
+              <div className="mono home-profile-tag">founder</div>
+            </div>
+            <button
+              className="home-profile-set mono"
+              onClick={onLogout}
+              title="Log out"
+            >
+              ⏻
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main className="home-center">
+        <header className="home-center-header">
+          <div>
+            <div className="mono home-eyebrow">/ founder · today</div>
+            <h1 className="home-greeting">
+              {greetingFor()}, {user.display_name}.{" "}
+              {pending > 0 ? (
+                <em>{pending} pending review</em>
+              ) : approved > 0 ? (
+                <em>{approved} live</em>
+              ) : (
+                <em>no launches yet</em>
+              )}
+              .
+            </h1>
+            <p className="home-subgreet body">
+              Mesh staff verifies launches within ~24 hours. Once approved,
+              your launch fans into your target communities and matched
+              users get a concierge nudge.
+            </p>
+          </div>
+        </header>
+
+        <section className="home-section">
+          <div className="home-section-head">
+            <h2 className="home-section-title">Your launches</h2>
+            <Link href="/founders/launch" className="mono home-section-link">
+              + new launch ↗
+            </Link>
+          </div>
+          {dashboard.length === 0 ? (
+            <div className="mono" style={{ color: "var(--ink-3)", padding: 24 }}>
+              you haven&apos;t submitted a launch yet —{" "}
+              <Link href="/founders/launch" style={{ textDecoration: "underline" }}>
+                start one
+              </Link>
+            </div>
+          ) : (
+            <div className="home-coms">
+              {dashboard.map((l) => (
+                <FounderLaunchRow key={l.launch_id} launch={l} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="home-section" id="home-nudges">
+          <div className="home-section-head">
+            <h2 className="home-section-title">
+              Notifications{" "}
+              <span className="mono home-section-count">{unread}</span>
+            </h2>
+          </div>
+          <div className="home-nudges">
+            {notes.length === 0 && (
+              <div className="mono" style={{ color: "var(--ink-3)" }}>
+                nothing yet — admin updates appear here when launches are
+                approved or rejected
+              </div>
+            )}
+            {notes.map((n, i) => (
+              <NudgeCard key={n.id} n={n} delay={i * 80} />
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function FounderLaunchRow({ launch }: { launch: DashboardLaunchCard }) {
+  const status = launch.verification_status;
+  const statusColor =
+    status === "approved"
+      ? "var(--good)"
+      : status === "rejected"
+      ? "var(--warn)"
+      : "var(--ink-2)";
+  return (
+    <div
+      className="home-com-row"
+      style={{ alignItems: "flex-start", padding: 16, gap: 16 }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="home-com-name" style={{ marginBottom: 4 }}>
+          {launch.product_url}
+        </div>
+        <div className="mono" style={{ fontSize: 12, color: "var(--ink-3)" }}>
+          submitted {new Date(launch.created_at).toLocaleDateString()}
+          {launch.approved_tool_slug && (
+            <>
+              {" "}·{" "}
+              <Link
+                href={`/p/${launch.approved_tool_slug}`}
+                style={{ textDecoration: "underline" }}
+              >
+                /p/{launch.approved_tool_slug}
+              </Link>
+            </>
+          )}
+        </div>
+        {status === "approved" && (
+          <div
+            className="mono"
+            style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 6 }}
+          >
+            matched {launch.matched_count} · {launch.tell_me_more_count} tell-me-more
+            · {launch.skip_count} skip · {launch.total_clicks} clicks
+          </div>
+        )}
+      </div>
+      <span
+        className="mono"
+        style={{
+          color: statusColor,
+          fontSize: 12,
+          textTransform: "uppercase",
+          letterSpacing: 1,
+        }}
+      >
+        {status}
+      </span>
+    </div>
   );
 }

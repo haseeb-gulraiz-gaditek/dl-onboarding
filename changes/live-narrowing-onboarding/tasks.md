@@ -38,14 +38,14 @@
 
 ### Frontend — live onboarding page
 
-- [ ] `frontend/src/app/onboarding/live/page.tsx` — Q1 dropdowns + Q2/Q3/Q4 chip lists with shrinking right-pane (F-LIVE-8)
-- [ ] `frontend/src/app/onboarding/live/page.tsx` — per-step "Updating…" placeholder during embed
-- [ ] `frontend/src/app/onboarding/live/page.tsx` — animated shrink (20 → 15 → 10 → 6) with layer chips + wildcard slot
-- [ ] `frontend/src/app/onboarding/live/page.tsx` — "save & exit" link to `/home`
-- [ ] `frontend/src/app/onboarding/live/page.tsx` — post-Q4 "See your full match →" CTA to `/home`
-- [ ] `frontend/src/lib/api-types.ts` — `LiveQuestion`, `LiveStepRequest`, `LiveStepResponse`, `LiveTool` shapes
-- [ ] `frontend/src/lib/auth.ts` — `currentUser()` propagates `onboarding_variant` from `/api/me`
-- [ ] Onboarding entry redirect: `/onboarding` page reads `currentUser().onboarding_variant` and redirects to `/onboarding/live` if `live`
+- [x] `frontend/src/app/onboarding/live/page.tsx` — Q1 dropdowns + Q2/Q3/Q4 chip lists with shrinking right-pane (F-LIVE-8)
+- [x] `frontend/src/app/onboarding/live/page.tsx` — per-step "Updating…" placeholder during embed
+- [x] `frontend/src/app/onboarding/live/page.tsx` — animated shrink (20 → 15 → 10 → 6) with layer chips + wildcard slot
+- [x] `frontend/src/app/onboarding/live/page.tsx` — "save & exit" link to `/home`
+- [x] `frontend/src/app/onboarding/live/page.tsx` — post-Q4 "See your full match →" CTA to `/home`
+- [x] `frontend/src/lib/api-types.ts` — `LiveQuestion`, `LiveStepRequest`, `LiveStepResponse`, `LiveTool` shapes
+- [x] `frontend/src/lib/auth.ts` — `currentUser()` propagates `onboarding_variant` from `/api/me` *(returns the JSON as-is; the new field is in `UserPublic`)*
+- [x] Onboarding entry redirect: `/onboarding` page reads `currentUser().onboarding_variant` and redirects to `/onboarding/live` if `live`
 
 ### Validation
 

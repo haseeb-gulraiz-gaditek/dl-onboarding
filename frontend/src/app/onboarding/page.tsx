@@ -15,7 +15,7 @@ import { MButton, MeshMark } from "@/components/Primitives";
 import { ToolGraph } from "@/components/ToolGraph";
 
 import { api, ApiError } from "@/lib/api";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, currentUser } from "@/lib/auth";
 import { tagsForAnswerValue } from "@/lib/tag-map";
 import type {
   AnswerCreateRequest,
@@ -35,11 +35,28 @@ export default function OnboardingPage() {
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.replace("/signup");
-    } else {
-      setAuthChecked(true);
-    }
+    let cancelled = false;
+    (async () => {
+      if (!isAuthenticated()) {
+        router.replace("/signup");
+        return;
+      }
+      // F-LIVE-9: route to live flow if the deploy is variant=live.
+      try {
+        const me = await currentUser();
+        if (cancelled) return;
+        if (me?.onboarding_variant === "live") {
+          router.replace("/onboarding/live");
+          return;
+        }
+      } catch {
+        // /api/me failure → fall through to classic
+      }
+      if (!cancelled) setAuthChecked(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (!authChecked) return null;

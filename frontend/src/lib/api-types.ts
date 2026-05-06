@@ -12,6 +12,7 @@ export interface UserPublic {
   display_name: string;
   created_at: string;
   last_active_at: string;
+  onboarding_variant?: "classic" | "live";   // F-LIVE-9
 }
 
 export interface AuthResponse {
@@ -383,4 +384,62 @@ export interface LaunchResponse {
   approved_tool_slug: string | null;
   created_at: string;
   publish_summary?: { community_posts_count: number; nudge_count: number } | null;
+}
+
+// ---- Live-narrowing onboarding (cycle #15) ----
+
+export type LiveQuestionKind = "dropdowns_3" | "multi_select" | "single_select";
+
+export interface LiveOption {
+  value: string;
+  label: string;
+}
+
+export interface LiveQuestion {
+  q_index: 1 | 2 | 3 | 4;
+  key: string;
+  text: string;
+  helper?: string | null;
+  kind: LiveQuestionKind;
+  sub_dropdowns?: Record<string, LiveOption[]> | null;
+  options?: LiveOption[] | null;
+  options_per_role?: Record<string, LiveOption[]> | null;
+  fallback_options?: LiveOption[] | null;
+}
+
+export interface LiveQuestionsResponse {
+  questions: LiveQuestion[];
+}
+
+export interface LiveOptionsResponse {
+  options: LiveOption[];
+  role_key_resolved: string;
+}
+
+export type LiveAnswerValue =
+  | { job_title: string; level: string; industry: string }
+  | { selected_values: string[] }
+  | { selected_value: string };
+
+export interface LiveStepRequest {
+  q_index: 1 | 2 | 3 | 4;
+  answer_value: LiveAnswerValue;
+}
+
+export interface LiveStepTool {
+  slug: string;
+  name: string;
+  tagline?: string | null;
+  category?: string | null;
+  score: number;
+  layer: "general" | "relevant" | "niche" | null;
+  reasoning_hook: string;
+}
+
+export interface LiveStepResponse {
+  step: number;
+  top: LiveStepTool[];
+  wildcard: LiveStepTool | null;
+  count_kept: number;
+  degraded: boolean;
 }

@@ -593,8 +593,10 @@ items:
   - id: 15
     summary: "live-narrowing-onboarding"
     priority: high
-    status: queued
+    status: in_progress
     added: 2026-05-06
+    promoted_to_cycle: "live-narrowing-onboarding"
+    promoted_at: "2026-05-06"
     notes: |
       Live-narrowing onboarding via Weaviate hybrid search. Replaces
       the current batch onboarding-then-recommend flow with a 4-question

@@ -35,3 +35,6 @@ scratch/
 
 # /lay-of-the-land orientation reports (re-runnable, not venture content)
 lotl-*/
+
+# Python bytecode under research dirs
+validation/**/__pycache__/

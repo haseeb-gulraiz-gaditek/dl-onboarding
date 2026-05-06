@@ -48,12 +48,12 @@ async def test_get_founder_launched_tool_returns_launch_meta(
 
     user = await signup_user(app_client, "maya@example.com")
     r = await app_client.get(
-        "/api/tools/acme-io",
+        "/api/tools/acme",
         headers=auth_header(user["jwt"]),
     )
     assert r.status_code == 200
     body = r.json()
-    assert body["tool"]["slug"] == "acme-io"
+    assert body["tool"]["slug"] == "acme"
     assert body["tool"]["is_founder_launched"] is True
     assert body["launch"] is not None
     assert body["launch"]["founder_email"] == "aamir@example.com"

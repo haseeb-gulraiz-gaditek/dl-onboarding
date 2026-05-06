@@ -59,11 +59,11 @@ async def test_approved_launch_appears_in_launches_slot(
     body = r.json()
     assert len(body["launches"]) >= 1
     launch_slugs = [p["tool"]["slug"] for p in body["launches"]]
-    assert "acme-io" in launch_slugs
+    assert "acme" in launch_slugs
 
     # Constitutional: never commingled with organic recs.
     organic_slugs = [p["tool"]["slug"] for p in body["recommendations"]]
-    assert "acme-io" not in organic_slugs
+    assert "acme" not in organic_slugs
 
     # Each launch pick is marked is_founder_launched (via the model).
     for pick in body["launches"]:

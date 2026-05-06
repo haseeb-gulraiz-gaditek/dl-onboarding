@@ -10,16 +10,23 @@ from app.launches.slug import derive_tool_slug, find_available_slug
 # ---- Pure derivation ----
 
 
-def test_derive_strips_www():
-    assert derive_tool_slug("https://www.acme.io") == "acme.io".replace(".", "-")
+def test_derive_strips_www_and_tld():
+    """Cycle #14 F-LAUNCH-7: noise-prefix + TLD stripping.
+
+    `www.` is in the noise-prefix list and the trailing `.io` is the
+    TLD, so https://www.acme.io reduces to "acme"."""
+    assert derive_tool_slug("https://www.acme.io") == "acme"
 
 
 def test_derive_lowercases_and_kebab_cases():
-    assert derive_tool_slug("https://Acme_Tools.io/about") == "acme-tools-io"
+    """Subdomain becomes a kebab segment after TLD strip:
+    Acme_Tools.io → acme-tools (TLD `.io` stripped)."""
+    assert derive_tool_slug("https://Acme_Tools.io/about") == "acme-tools"
 
 
 def test_derive_collapses_runs_and_strips():
-    assert derive_tool_slug("https://---acme---.io---") == "acme-io"
+    """Same TLD-strip rule applies; runs of dashes collapse."""
+    assert derive_tool_slug("https://---acme---.io---") == "acme"
 
 
 def test_derive_falls_back_when_host_missing():

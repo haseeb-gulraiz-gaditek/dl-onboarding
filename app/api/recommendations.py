@@ -1,15 +1,20 @@
 """POST /api/recommendations.
 
 Per spec-delta recommendation-engine F-REC-1, F-REC-2, F-REC-5.
+Also hosts the live-narrowing onboarding endpoint per cycle #15
+spec-delta `live-narrowing-onboarding` F-LIVE-2.
 """
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 from app.auth.middleware import require_role
+from app.db.live_answers import get_user_live_answers, upsert_live_answer
 from app.models.recommendation import RecommendationsResponse
 from app.onboarding.match import count_distinct_answers
 from app.recommendations.engine import generate_recommendations
+from app.recommendations.live_engine import K_SCHEDULE, live_match
 
 
 router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
@@ -46,3 +51,71 @@ async def get_recommendations(
     count = min(MAX_COUNT, count)
 
     return await generate_recommendations(user, count)
+
+
+# ---- F-LIVE-2: per-tap narrowing endpoint ----
+
+class LiveStepRequest(BaseModel):
+    q_index: int = Field(..., ge=1, le=4)
+    answer_value: dict[str, Any]
+
+
+class LiveStepTool(BaseModel):
+    slug: str
+    name: str
+    tagline: str | None = None
+    category: str | None = None
+    score: float
+    layer: str | None = None
+    reasoning_hook: str
+
+
+class LiveStepResponse(BaseModel):
+    step: int
+    top: list[LiveStepTool]
+    wildcard: LiveStepTool | None = None
+    count_kept: int
+    degraded: bool = False
+
+
+@router.post("/live-step", response_model=LiveStepResponse)
+async def live_step(
+    payload: LiveStepRequest,
+    user: dict[str, Any] = Depends(require_role("user")),
+) -> LiveStepResponse:
+    """F-LIVE-2: persist answer + re-embed + hybrid query → ranked
+    list with score-band layers + wildcard. Founders → 403."""
+    # Persist this step's answer (upsert per (user, q_index)).
+    await upsert_live_answer(
+        user_id=user["_id"],
+        q_index=payload.q_index,
+        value=payload.answer_value,
+    )
+
+    # Read all live answers for the user (so live_match builds the
+    # full accumulated profile_text).
+    live_answers = await get_user_live_answers(user["_id"])
+
+    try:
+        result = await live_match(
+            user=user,
+            q_index=payload.q_index,
+            live_answers=live_answers,
+        )
+    except Exception as exc:
+        # The OpenAI embed inside live_match is the most likely failure
+        # mode (rate limit, network blip). Surface as 503 — the answer
+        # is already persisted so the user can retry.
+        print(f"[live-step] pipeline failed: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": "live_step_unavailable"},
+        )
+
+    return LiveStepResponse(
+        step=result.step,
+        top=[LiveStepTool(**t) for t in result.top],
+        wildcard=LiveStepTool(**result.wildcard) if result.wildcard else None,
+        count_kept=result.count_kept,
+        degraded=result.degraded,
+    )

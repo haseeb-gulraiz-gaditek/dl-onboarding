@@ -91,10 +91,10 @@ async def test_approve_creates_founder_launched_tool(app_client, seed_test_commu
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["verification_status"] == "approved"
-    assert body["approved_tool_slug"] == "acme-io"
+    assert body["approved_tool_slug"] == "acme"
     assert body["reviewed_by"] == admin_token["email"]
 
-    tool = await find_by_slug("acme-io")
+    tool = await find_by_slug("acme")
     assert tool is not None
     assert tool["is_founder_launched"] is True
     assert tool["launched_via_id"] == ObjectId(launch_id)
@@ -121,7 +121,7 @@ async def test_approve_writes_notification(app_client, seed_test_communities, ad
     )
     assert note is not None
     assert note["payload"]["launch_id"] == launch_id
-    assert note["payload"]["tool_slug"] == "acme-io"
+    assert note["payload"]["tool_slug"] == "acme"
 
 
 @pytest.mark.asyncio

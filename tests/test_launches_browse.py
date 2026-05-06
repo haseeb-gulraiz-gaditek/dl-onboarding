@@ -51,7 +51,7 @@ async def test_default_filter_returns_only_joined_community_launches(
     assert r.status_code == 200
     launches = r.json()["launches"]
     assert len(launches) == 1
-    assert launches[0]["tool"]["slug"] == "acme-io"
+    assert launches[0]["tool"]["slug"] == "acme"
     assert launches[0]["in_my_communities"] == ["marketing-ops"]
 
 

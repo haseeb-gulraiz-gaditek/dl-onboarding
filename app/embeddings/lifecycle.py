@@ -111,7 +111,12 @@ async def clear_tool_embedding(slug: str) -> None:
 
 # ---- Profile embeddings ----
 
-async def ensure_profile_embedding(user: dict[str, Any]) -> bool:
+async def ensure_profile_embedding(
+    user: dict[str, Any],
+    *,
+    force_recompute: bool = False,
+    override_text: str | None = None,
+) -> bool:
     """Lazy profile embedding (F-EMB-3).
 
     Regenerates only if the profile has no embedding OR
@@ -120,6 +125,11 @@ async def ensure_profile_embedding(user: dict[str, Any]) -> bool:
     Refuses founder users -- founders have no profile per F-QB-5
     so this branch is unreachable in production but guarded for
     safety.
+
+    F-LIVE-4: live-flow callers pass `force_recompute=True` and
+    `override_text=<live profile_text>` to bypass both the freshness
+    check and the answers-collection text builder. The live flow
+    builds its own structured paragraph from the live answers map.
     """
     role_type = user.get("role_type")
     if role_type != "user":
@@ -132,25 +142,28 @@ async def ensure_profile_embedding(user: dict[str, Any]) -> bool:
     if profile is None:
         return False
 
-    has_embedding = profile.get("embedding") is not None
-    last_recompute_at = profile.get("last_recompute_at")
-    last_invalidated_at = profile.get("last_invalidated_at")
+    if not force_recompute:
+        has_embedding = profile.get("embedding") is not None
+        last_recompute_at = profile.get("last_recompute_at")
+        last_invalidated_at = profile.get("last_invalidated_at")
 
-    fresh = (
-        has_embedding
-        and last_recompute_at is not None
-        and last_invalidated_at is not None
-        and last_recompute_at >= last_invalidated_at
-    )
-    if fresh:
-        return False
+        fresh = (
+            has_embedding
+            and last_recompute_at is not None
+            and last_invalidated_at is not None
+            and last_recompute_at >= last_invalidated_at
+        )
+        if fresh:
+            return False
 
-    cursor = answers_collection().find(
-        {"user_id": user["_id"]}
-    ).sort("captured_at", -1).limit(20)
-    recent = await cursor.to_list(length=20)
-
-    text = _profile_embeddable_text(profile, recent)
+    if override_text is not None:
+        text = override_text
+    else:
+        cursor = answers_collection().find(
+            {"user_id": user["_id"]}
+        ).sort("captured_at", -1).limit(20)
+        recent = await cursor.to_list(length=20)
+        text = _profile_embeddable_text(profile, recent)
     if not text.strip():
         # Brand-new user with no answers yet; nothing to embed.
         return False

@@ -216,7 +216,7 @@ async def test_approve_concierge_scan_writes_nudges(
     assert len(nudges) == 3
     for n in nudges:
         assert n["payload"]["launch_id"] == launch_id
-        assert n["payload"]["tool_slug"] == "acme-io"
+        assert n["payload"]["tool_slug"] == "acme"
 
 
 @pytest.mark.asyncio

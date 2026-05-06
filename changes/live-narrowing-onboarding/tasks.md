@@ -6,35 +6,35 @@
 
 - [x] `app/onboarding/live_questions.py` — `LiveQuestion` Pydantic model + `LIVE_QUESTIONS` constant (4 questions, copy from `validation/onboarding-v1-locked.md`)
 - [x] Hand-curate `options_per_role` for ~12 roles (SWE / Accountant / Doctor / Marketer / Designer / PM / Sales / Founder / Student / Lawyer / Operations / Customer Success / Consultant) + `fallback_options` (12-tool generic set)
-- [ ] `GET /api/onboarding/live-questions` — return all 4 questions (auth-only)
-- [ ] `GET /api/onboarding/live-questions/{q_index}/options?role=...` — Q2/Q3 role-conditioned options endpoint
-- [ ] `app/embeddings/vector_store.py` — add `hybrid_search()` helper (F-LIVE-3)
-- [ ] `app/embeddings/vector_store.py` — honour `WEAVIATE_USE_GRPC=false` env (F-LIVE-7); REST-only client config
-- [ ] `app/embeddings/vector_store.py` — startup log line announcing gRPC mode
+- [x] `GET /api/onboarding/live-questions` — return all 4 questions (auth-only)
+- [x] `GET /api/onboarding/live-questions/{q_index}/options?role=...` — Q2/Q3 role-conditioned options endpoint
+- [x] `app/embeddings/vector_store.py` — add `hybrid_search()` helper (F-LIVE-3)
+- [x] `app/embeddings/vector_store.py` — honour `WEAVIATE_USE_GRPC=false` env (F-LIVE-7); REST-only client config
+- [x] `app/embeddings/vector_store.py` — startup log line announcing gRPC mode
 
 ### Backend — live engine + endpoint
 
-- [ ] `app/recommendations/live_engine.py` — `live_match(user, q_index)` (F-LIVE-2 pipeline)
-- [ ] `app/recommendations/live_engine.py` — `LAYER_BANDS` constants + `layer_for(score)` (F-LIVE-5)
-- [ ] `app/recommendations/live_engine.py` — `profile_text_from_live_answers(user)` builder (structured paragraph)
-- [ ] `POST /api/recommendations/live-step` — request/response models + handler
-- [ ] Per-tap upsert of live answers to existing `answers` collection (one row per `(user_id, q_index)`)
-- [ ] Always call `ensure_profile_embedding(user, force_recompute=True)` before hybrid query (F-LIVE-4)
-- [ ] Hybrid → similarity_search fallback when Weaviate hybrid raises (`degraded: true` flag in response)
-- [ ] Wildcard (over-fetch K+1, pick lowest as wildcard) (F-LIVE-6)
+- [x] `app/recommendations/live_engine.py` — `live_match(user, q_index)` (F-LIVE-2 pipeline)
+- [x] `app/recommendations/live_engine.py` — `LAYER_BANDS` constants + `layer_for(score)` (F-LIVE-5)
+- [x] `app/recommendations/live_engine.py` — `profile_text_from_live_answers(user)` builder (structured paragraph)
+- [x] `POST /api/recommendations/live-step` — request/response models + handler
+- [x] Per-tap upsert of live answers to existing `answers` collection (one row per `(user_id, q_index)`)
+- [x] Always call `ensure_profile_embedding(user, force_recompute=True)` before hybrid query (F-LIVE-4)
+- [x] Hybrid → similarity_search fallback when Weaviate hybrid raises (`degraded: true` flag in response)
+- [x] Wildcard (over-fetch K+1, pick lowest as wildcard) (F-LIVE-6)
 
 ### Backend — feature flag plumbing
 
-- [ ] New env: `MESH_ONBOARDING_VARIANT={"classic","live"}`, default `"classic"` (F-LIVE-9)
-- [ ] `/api/me` response gains `onboarding_variant` field
+- [x] New env: `MESH_ONBOARDING_VARIANT={"classic","live"}`, default `"classic"` (F-LIVE-9)
+- [x] `/api/me` response gains `onboarding_variant` field
 
 ### Backend — tests
 
-- [ ] `tests/test_live_questions.py` — schema endpoint + role-conditioned options endpoint (5+ tests)
-- [ ] `tests/test_live_engine.py` — pipeline unit tests (mock embed + Weaviate); per-step K shrink; alpha schedule wiring
-- [ ] `tests/test_live_step_endpoint.py` — auth gate (founder 403), persistence (answer + profile written), degraded flag on Weaviate failure (10+ tests)
-- [ ] `tests/test_hybrid_search.py` — helper signature + None-client short-circuit (3 tests)
-- [ ] `tests/test_layer_bands.py` — layer_for() at boundaries (5 tests)
+- [x] `tests/test_live_questions.py` — schema endpoint + role-conditioned options endpoint (5+ tests)
+- [x] `tests/test_live_engine.py` — pipeline unit tests (mock embed + Weaviate); per-step K shrink; alpha schedule wiring
+- [x] `tests/test_live_step_endpoint.py` — auth gate (founder 403), persistence (answer + profile written), degraded flag on Weaviate failure (10+ tests)
+- [x] `tests/test_hybrid_search.py` — helper signature + None-client short-circuit (3 tests)
+- [x] `tests/test_layer_bands.py` — layer_for() at boundaries (5 tests) *(consolidated into test_live_engine.py)*
 
 ### Frontend — live onboarding page
 

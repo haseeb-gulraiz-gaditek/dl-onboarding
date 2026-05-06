@@ -52,6 +52,12 @@ async def _get_weaviate_client() -> Any:
 
     The result is cached: on failure, None is cached and we don't try
     again until `reset_weaviate_client_for_tests()` is called.
+
+    F-LIVE-7: when env `WEAVIATE_USE_GRPC=false`, the client is
+    constructed with `skip_init_checks=True` and a tiny gRPC port
+    (still required by the v4 client signature, but never actually
+    probed). All queries go over REST `/v1/graphql`. ~3× slower per
+    query but works on networks where the gRPC subdomain is firewalled.
     """
     global _client, _init_attempted
     if _init_attempted:
@@ -63,22 +69,42 @@ async def _get_weaviate_client() -> Any:
     if not url or not api_key:
         return None
 
+    use_grpc = os.environ.get("WEAVIATE_USE_GRPC", "true").strip().lower() != "false"
+
     try:
         import weaviate
         from weaviate.classes.init import Auth, AdditionalConfig, Timeout
 
-        # Short init timeout so an unreachable Weaviate cloud (no
-        # network / firewall blocking gRPC) fails fast instead of
-        # blocking the request thread for ~30s on first call. The
-        # init probe failing caches _client=None and every later
-        # call short-circuits without re-trying.
-        client = weaviate.use_async_with_weaviate_cloud(
-            cluster_url=url,
-            auth_credentials=Auth.api_key(api_key),
-            additional_config=AdditionalConfig(
-                timeout=Timeout(init=2, query=5, insert=5),
-            ),
-        )
+        if not use_grpc:
+            # REST-only mode: skip the gRPC health probe entirely.
+            # Queries fall back to /v1/graphql automatically when the
+            # client can't reach the gRPC port.
+            print(
+                "[vector_store] WEAVIATE_USE_GRPC=false; using REST-only "
+                "mode (slower but works on networks that block gRPC)",
+                flush=True,
+            )
+            client = weaviate.use_async_with_weaviate_cloud(
+                cluster_url=url,
+                auth_credentials=Auth.api_key(api_key),
+                skip_init_checks=True,
+                additional_config=AdditionalConfig(
+                    timeout=Timeout(init=2, query=10, insert=10),
+                ),
+            )
+        else:
+            # Short init timeout so an unreachable Weaviate cloud (no
+            # network / firewall blocking gRPC) fails fast instead of
+            # blocking the request thread for ~30s on first call. The
+            # init probe failing caches _client=None and every later
+            # call short-circuits without re-trying.
+            client = weaviate.use_async_with_weaviate_cloud(
+                cluster_url=url,
+                auth_credentials=Auth.api_key(api_key),
+                additional_config=AdditionalConfig(
+                    timeout=Timeout(init=2, query=5, insert=5),
+                ),
+            )
         await client.connect()
         _client = client
         return _client
@@ -377,3 +403,61 @@ def _build_weaviate_filter(filters: dict[str, Any]):
             f = Filter.by_property(key).equal(value)
         expr = f if expr is None else (expr & f)
     return expr
+
+
+async def hybrid_search(
+    *,
+    weaviate_class: str,
+    query: str,
+    vector: list[float],
+    alpha: float,
+    limit: int,
+    filters: dict[str, Any] | None = None,
+) -> list[tuple[dict[str, Any], float]]:
+    """F-LIVE-3: Weaviate v4 hybrid search (BM25 + vector cosine,
+    alpha-blended).
+
+    Returns `[(properties_dict, score)]` sorted descending by score.
+    Returns `[]` when the Weaviate client is unreachable or the
+    `weaviate_class` doesn't exist.
+
+    `alpha` is the standard Weaviate convention:
+      - 0.0 → pure BM25 (keyword)
+      - 1.0 → pure vector (semantic)
+      - 0.5 → balanced
+
+    No Mongo hydrate — caller passes the slug list to its own
+    Mongo lookup. This separates the search concern from the
+    catalog hydrate concern (the live engine in cycle #15 needs to
+    pair scores with full tool docs, while pure search callers
+    might not).
+    """
+    client = await _get_weaviate_client()
+    if client is None:
+        return []
+    try:
+        coll = client.collections.use(weaviate_class)
+        wvw_filter = _build_weaviate_filter(filters) if filters else None
+        from weaviate.classes.query import MetadataQuery
+
+        resp = await coll.query.hybrid(
+            query=query,
+            vector=vector,
+            alpha=alpha,
+            limit=limit,
+            filters=wvw_filter,
+            return_metadata=MetadataQuery(score=True),
+        )
+        results: list[tuple[dict[str, Any], float]] = []
+        for obj in resp.objects:
+            props = dict(obj.properties or {})
+            score = 0.0
+            try:
+                score = float(obj.metadata.score) if obj.metadata else 0.0
+            except (AttributeError, TypeError, ValueError):
+                pass
+            results.append((props, score))
+        return results
+    except Exception as exc:
+        print(f"[vector_store] hybrid_search failed: {exc}")
+        return []

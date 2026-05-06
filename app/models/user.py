@@ -52,6 +52,7 @@ class UserPublic(BaseModel):
     display_name: str
     created_at: datetime
     last_active_at: datetime
+    onboarding_variant: str = "classic"   # F-LIVE-9
 
 
 class AuthResponse(BaseModel):
@@ -63,6 +64,10 @@ class AuthResponse(BaseModel):
 
 def to_public(doc: dict) -> UserPublic:
     """Project a stored user document into the client-safe shape."""
+    import os
+    variant = os.environ.get("MESH_ONBOARDING_VARIANT", "classic").strip().lower()
+    if variant not in ("classic", "live"):
+        variant = "classic"
     return UserPublic(
         id=str(doc["_id"]),
         email=doc["email"],
@@ -70,4 +75,5 @@ def to_public(doc: dict) -> UserPublic:
         display_name=doc["display_name"],
         created_at=doc["created_at"],
         last_active_at=doc["last_active_at"],
+        onboarding_variant=variant,
     )

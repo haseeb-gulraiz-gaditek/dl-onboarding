@@ -60,15 +60,17 @@ async def profile_summary(
     )
     answers = await cursor.to_list(length=None)
 
-    if not answers:
-        return ProfileSummaryResponse(stack_tools=[], all_answer_values=[])
+    # NB: do NOT early-return on empty `answers` — the user may be a
+    # live-flow user whose data lives in `live_answers` only. The
+    # merge block at the end handles them.
 
     # Resolve question docs for the answered question_ids (one query).
-    qids = list({a["question_id"] for a in answers})
-    qcursor = questions_collection().find({"_id": {"$in": qids}})
     qmap: dict[ObjectId, dict[str, Any]] = {}
-    async for q in qcursor:
-        qmap[q["_id"]] = q
+    if answers:
+        qids = list({a["question_id"] for a in answers})
+        qcursor = questions_collection().find({"_id": {"$in": qids}})
+        async for q in qcursor:
+            qmap[q["_id"]] = q
 
     # all_answer_values: every value (string or list[string]) flattened.
     all_values: list[str] = []

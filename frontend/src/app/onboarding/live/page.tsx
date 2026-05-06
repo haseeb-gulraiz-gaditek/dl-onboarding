@@ -181,9 +181,17 @@ function LiveTapLoop() {
             | undefined;
           if (a4?.selected_value) setQ4Selected(a4.selected_value);
 
-          // Position the user at the next unanswered step (or "done"
-          // if all 4 are saved).
-          if (stateR.next_step === null) {
+          // Edit mode: ?edit=1 forces the user back to Q1 with their
+          // previous answers pre-filled. Each Continue re-upserts +
+          // re-fires live-step so the profile + graph stay in sync.
+          const editMode =
+            typeof window !== "undefined" &&
+            new URLSearchParams(window.location.search).get("edit") === "1";
+
+          if (editMode) {
+            setStep(1);
+            setDone(false);
+          } else if (stateR.next_step === null) {
             setDone(true);
             setStep(4);
           } else if (stateR.next_step >= 1 && stateR.next_step <= 4) {

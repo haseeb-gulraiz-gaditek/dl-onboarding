@@ -46,7 +46,10 @@ export default function OnboardingPage() {
         const me = await currentUser();
         if (cancelled) return;
         if (me?.onboarding_variant === "live") {
-          router.replace("/onboarding/live");
+          // Preserve any query params (e.g., ?edit=1) across the
+          // variant redirect.
+          const search = typeof window !== "undefined" ? window.location.search : "";
+          router.replace(`/onboarding/live${search}`);
           return;
         }
       } catch {

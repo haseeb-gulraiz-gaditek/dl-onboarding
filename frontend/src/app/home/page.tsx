@@ -264,7 +264,7 @@ function HomeLeftRail({
           <span className="home-nav-glyph">⌬</span>
           <span className="home-nav-label">Inbox</span>
         </Link>
-        <Link href="/onboarding" className="home-nav-item">
+        <Link href="/onboarding?edit=1" className="home-nav-item">
           <span className="home-nav-glyph">◎</span>
           <span className="home-nav-label">Refine profile</span>
         </Link>
@@ -302,7 +302,7 @@ function HomeLeftRail({
             </Link>
           ))}
         </div>
-        <Link href="/onboarding" className="home-stack-add mono">+ refine profile</Link>
+        <Link href="/onboarding?edit=1" className="home-stack-add mono">+ refine profile</Link>
       </div>
 
       <div className="home-rail-foot">
@@ -414,7 +414,7 @@ function HomeCenter({
           >
             <span>no matches yet — answer onboarding to populate</span>
             <Link
-              href="/onboarding"
+              href="/onboarding?edit=1"
               style={{
                 color: "var(--accent)",
                 textDecoration: "underline",
@@ -634,7 +634,7 @@ function HomeRightRail({
           ))
         )}
       </div>
-      <Link href="/onboarding" className="mono home-rail-refine">
+      <Link href="/onboarding?edit=1" className="mono home-rail-refine">
         refine profile ↗
       </Link>
     </aside>

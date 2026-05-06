@@ -3,17 +3,18 @@
 // Mesh — Live-narrowing onboarding (cycle #15).
 // Per spec-delta live-narrowing-onboarding F-LIVE-8.
 //
-// 4 questions, ranked-list shrinks 20 → 15 → 10 → 6 in real time.
-// Each tap persists the answer + re-embeds the profile vector, so a
-// mid-flow exit is non-destructive — the next /home load reads
-// whatever profile vector exists.
+// Same visual shell as the classic /onboarding flow (left graph pane,
+// right content pane, ToolGraph that shrinks as the profile sharpens).
+// Only the data flow is different: 4 locked questions instead of the
+// open question bank, and POST /api/recommendations/live-step on every
+// tap instead of POST /api/answers.
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { MButton, MeshMark } from "@/components/Primitives";
-import { HeaderBell } from "@/components/HeaderBell";
+import { ToolGraph } from "@/components/ToolGraph";
 
 import { api, ApiError } from "@/lib/api";
 import { isAuthenticated, currentUser } from "@/lib/auth";
@@ -28,6 +29,9 @@ import type {
 } from "@/lib/api-types";
 
 
+// =============================================================================
+// Page — auth + variant gate
+// =============================================================================
 export default function LiveOnboardingPage() {
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
@@ -48,14 +52,11 @@ export default function LiveOnboardingPage() {
           return;
         }
         if (me?.onboarding_variant !== "live") {
-          // The deploy isn't on `live` — fall back to classic so users
-          // can't get stranded on a flag-disabled page.
           setBouncedClassic(true);
           router.replace("/onboarding");
           return;
         }
       } catch {
-        // /api/me failure → bounce to login
         router.replace("/login");
         return;
       }
@@ -67,16 +68,29 @@ export default function LiveOnboardingPage() {
   }, [router]);
 
   if (!authChecked || bouncedClassic) return null;
-  return <LiveFlow />;
+  return <LiveTapLoop />;
 }
 
 
-function LiveFlow() {
+// =============================================================================
+// Constants — UI shrink schedule (mirrors backend K_SCHEDULE)
+// =============================================================================
+const SLOT_BY_STEP: Record<number, number> = { 1: 20, 2: 15, 3: 10, 4: 6 };
+
+
+// =============================================================================
+// Tap loop — same visual shell as classic /onboarding
+// =============================================================================
+function LiveTapLoop() {
   const router = useRouter();
+
   const [questions, setQuestions] = useState<LiveQuestion[] | null>(null);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [loadingQuestions, setLoadingQuestions] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(true);  // initial schema fetch
+  const [busy, setBusy] = useState(false);       // submitting + matching
+
+  const [latest, setLatest] = useState<LiveStepResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Per-step answer state.
@@ -87,10 +101,7 @@ function LiveFlow() {
   const [q3Options, setQ3Options] = useState<LiveOption[] | null>(null);
   const [q4Selected, setQ4Selected] = useState("");
 
-  // Result state.
-  const [latest, setLatest] = useState<LiveStepResponse | null>(null);
-
-  // Fetch the schema on mount.
+  // Fetch the schema once.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -101,18 +112,23 @@ function LiveFlow() {
         if (cancelled) return;
         setQuestions(r.questions);
       } catch (e) {
-        console.warn("[live] questions fetch failed", e);
+        if (e instanceof ApiError && e.status === 403) {
+          router.replace("/home");
+          return;
+        }
+        console.error("[live] schema fetch failed", e);
         setError("could not load questions");
       } finally {
-        if (!cancelled) setLoadingQuestions(false);
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // After Q1 lands, fetch role-conditioned options for Q2 and Q3.
+  // After Q1 lands, fetch role-conditioned options for Q2 + Q3 in parallel.
   useEffect(() => {
     if (!q1Answer.job_title) return;
     let cancelled = false;
@@ -133,40 +149,33 @@ function LiveFlow() {
         console.warn("[live] options fetch failed", e);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [q1Answer.job_title]);
 
-  const q = questions?.find((qq) => qq.q_index === step);
+  // Tags for the graph — pulled from the latest top tools' categories + labels.
+  const accumulatedTags = useMemo<string[]>(() => {
+    const tags = new Set<string>();
+    for (const t of latest?.top || []) {
+      if (t.category) tags.add(t.category);
+      if (t.layer) tags.add(t.layer);
+    }
+    return [...tags];
+  }, [latest]);
 
-  const canAdvance = useMemo((): boolean => {
-    if (step === 1)
-      return !!(q1Answer.job_title && q1Answer.level && q1Answer.industry);
-    if (step === 2) return q2Selected.length > 0;
-    if (step === 3) return !!q3Selected;
-    if (step === 4) return !!q4Selected;
-    return false;
-  }, [step, q1Answer, q2Selected, q3Selected, q4Selected]);
-
-  const submitStep = async () => {
-    if (!canAdvance || busy) return;
+  const submitStep = async (value: LiveAnswerValue) => {
+    if (busy) return;
     setBusy(true);
     setError(null);
-    let answer_value: LiveAnswerValue;
-    if (step === 1) answer_value = q1Answer;
-    else if (step === 2) answer_value = { selected_values: q2Selected };
-    else if (step === 3) answer_value = { selected_value: q3Selected };
-    else answer_value = { selected_value: q4Selected };
-
     try {
       const r = await api.post<LiveStepResponse>(
         "/api/recommendations/live-step",
-        { q_index: step, answer_value },
+        { q_index: step, answer_value: value },
       );
       setLatest(r);
       if (step < 4) {
         setStep(((step + 1) as 1 | 2 | 3 | 4));
+      } else {
+        setDone(true);
       }
     } catch (e) {
       console.warn("[live] submit failed", e);
@@ -180,296 +189,295 @@ function LiveFlow() {
     }
   };
 
-  if (loadingQuestions) {
-    return (
-      <Shell>
-        <div className="mono" style={{ color: "var(--ink-3)" }}>loading…</div>
-      </Shell>
-    );
-  }
+  const slotCount = done ? 6 : SLOT_BY_STEP[step];
+  const progress = done ? 1 : 0.3 + ((step - 1) / 4) * 0.7;
+  const currentQuestion = questions?.find((qq) => qq.q_index === step);
 
-  if (!questions || !q) {
-    return (
-      <Shell>
-        <div className="mono" style={{ color: "var(--warn)" }}>
-          {error || "questions unavailable"}
+  return (
+    <div className="onb-root">
+      {/* Left pane: same ToolGraph shell as classic */}
+      <div className={`onb-graph-pane ${done ? "collapsed" : ""}`}>
+        <div className="onb-graph-canvas">
+          <ToolGraph
+            progress={progress}
+            highlightedTags={accumulatedTags}
+            mode="score"
+            gridSlots={slotCount}
+            scale={1.4}
+          />
         </div>
-      </Shell>
-    );
-  }
-
-  return (
-    <Shell>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0,1fr) 360px",
-          gap: 32,
-          alignItems: "flex-start",
-        }}
-      >
-        {/* Question pane */}
-        <section>
-          <div className="mono" style={{ color: "var(--ink-3)", fontSize: 11 }}>
-            / live · question {step} of 4
+        <div className="onb-graph-meta mono">
+          <div className="onb-graph-meta-row">
+            <span className="onb-graph-dot" />
+            <span>
+              profile · {done
+                ? "matches ready"
+                : busy
+                  ? "matching…"
+                  : `narrowing to ${slotCount}`}
+            </span>
           </div>
-          <h1 className="onb-q-title" style={{ marginTop: 8 }}>{q.text}</h1>
-          {q.helper && (
-            <p className="body" style={{ color: "var(--ink-2)", marginTop: 8 }}>
-              {q.helper}
-            </p>
-          )}
-
-          <div style={{ marginTop: 24 }}>
-            {step === 1 && (
-              <Q1Dropdowns
-                value={q1Answer}
-                subDropdowns={q.sub_dropdowns || {}}
-                onChange={setQ1Answer}
-              />
-            )}
-            {step === 2 && (
-              <ChipMulti
-                options={q2Options || []}
-                selected={q2Selected}
-                onToggle={(v) =>
-                  setQ2Selected((prev) =>
-                    prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v],
-                  )
-                }
-              />
-            )}
-            {step === 3 && (
-              <ChipSingle
-                options={q3Options || []}
-                selected={q3Selected}
-                onPick={setQ3Selected}
-              />
-            )}
-            {step === 4 && (
-              <ChipSingle
-                options={q.options || []}
-                selected={q4Selected}
-                onPick={setQ4Selected}
-              />
-            )}
-          </div>
-
-          {error && (
-            <div
-              className="mono"
-              style={{ color: "var(--warn)", marginTop: 16, fontSize: 12 }}
-            >
-              {error}
-            </div>
-          )}
-
-          <div style={{ marginTop: 32, display: "flex", gap: 12, alignItems: "center" }}>
-            {step < 4 ? (
-              <MButton
-                disabled={!canAdvance || busy}
-                onClick={submitStep}
-              >
-                {busy ? "Updating…" : `Continue → Q${step + 1}`}
-              </MButton>
-            ) : (
-              <MButton disabled={!canAdvance || busy} onClick={submitStep}>
-                {busy ? "Finalizing…" : "Finish & see my full match →"}
-              </MButton>
-            )}
-            <Link
-              href="/home"
-              className="mono"
-              style={{ color: "var(--ink-3)", fontSize: 12 }}
-            >
-              save & exit
-            </Link>
-            {step === 4 && latest && (
-              <Link href="/home" className="mono" style={{ color: "var(--accent)", fontSize: 12 }}>
-                go to home →
-              </Link>
-            )}
-          </div>
-        </section>
-
-        {/* Live narrowing pane */}
-        <aside>
-          <NarrowingPane latest={latest} step={step} busy={busy} />
-        </aside>
-      </div>
-    </Shell>
-  );
-}
-
-
-function Q1Dropdowns({
-  value,
-  subDropdowns,
-  onChange,
-}: {
-  value: { job_title: string; level: string; industry: string };
-  subDropdowns: Record<string, LiveOption[]>;
-  onChange: (next: { job_title: string; level: string; industry: string }) => void;
-}) {
-  return (
-    <div style={{ display: "grid", gap: 12 }}>
-      {(["job_title", "level", "industry"] as const).map((key) => (
-        <div key={key}>
-          <label className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>
-            {key.replace("_", " ")}
-          </label>
-          <select
-            className="m-input"
-            value={value[key]}
-            onChange={(e) => onChange({ ...value, [key]: e.target.value })}
-            style={{ width: "100%", marginTop: 4 }}
-          >
-            <option value="">— pick one —</option>
-            {(subDropdowns[key] || []).map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
+          <div className="onb-graph-tags">
+            {accumulatedTags.slice(0, 8).map((t) => (
+              <span key={t} className="onb-graph-tag">
+                {t}
+              </span>
             ))}
-          </select>
+            {!latest && !busy && (
+              <span className="onb-graph-tag" style={{ opacity: 0.5 }}>
+                answer Q{step} to start
+              </span>
+            )}
+          </div>
         </div>
-      ))}
-    </div>
-  );
-}
-
-
-function ChipMulti({
-  options,
-  selected,
-  onToggle,
-}: {
-  options: LiveOption[];
-  selected: string[];
-  onToggle: (v: string) => void;
-}) {
-  if (options.length === 0) {
-    return (
-      <div className="mono" style={{ color: "var(--ink-3)" }}>
-        loading options…
       </div>
-    );
-  }
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onToggle(o.value)}
-          className="mono"
-          style={{
-            padding: "8px 14px",
-            borderRadius: "var(--r-pill)",
-            fontSize: 13,
-            background: selected.includes(o.value) ? "var(--accent-soft)" : "transparent",
-            border: selected.includes(o.value)
-              ? "1px solid var(--accent)"
-              : "1px solid var(--line-0)",
-            color: selected.includes(o.value) ? "var(--ink-0)" : "var(--ink-2)",
-            cursor: "pointer",
-          }}
-        >
-          {selected.includes(o.value) ? "✓ " : ""}{o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
+      {/* Right pane: header + question card / loader / result */}
+      <div className="onb-content-pane">
+        <header className="onb-header">
+          <Link href="/" className="onb-brand">
+            <MeshMark size={20} />
+            <span>Mesh</span>
+          </Link>
+          <button
+            className="onb-exit mono"
+            onClick={() => router.push("/home")}
+          >
+            save & exit
+          </button>
+        </header>
 
-function ChipSingle({
-  options,
-  selected,
-  onPick,
-}: {
-  options: LiveOption[];
-  selected: string;
-  onPick: (v: string) => void;
-}) {
-  if (options.length === 0) {
-    return (
-      <div className="mono" style={{ color: "var(--ink-3)" }}>
-        loading options…
-      </div>
-    );
-  }
-  return (
-    <div style={{ display: "grid", gap: 8 }}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onPick(o.value)}
-          className="body"
-          style={{
-            padding: "12px 16px",
-            borderRadius: "var(--r-md)",
-            fontSize: 14,
-            textAlign: "left",
-            background: selected === o.value ? "var(--accent-soft)" : "transparent",
-            border: selected === o.value
-              ? "1px solid var(--accent)"
-              : "1px solid var(--line-0)",
-            color: "var(--ink-0)",
-            cursor: "pointer",
-          }}
-        >
-          {selected === o.value ? "● " : "○ "}{o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+        {loading && !done && (
+          <div className="mono" style={{ padding: 32, color: "var(--ink-2)" }}>
+            loading…
+          </div>
+        )}
 
-
-function NarrowingPane({
-  latest,
-  step,
-  busy,
-}: {
-  latest: LiveStepResponse | null;
-  step: number;
-  busy: boolean;
-}) {
-  return (
-    <div className="m-card" style={{ padding: 20 }}>
-      <div className="mono" style={{ color: "var(--ink-3)", fontSize: 11 }}>
-        / matching live
-      </div>
-      <h3 className="h-card" style={{ marginTop: 4, fontSize: 14 }}>
-        {latest ? `top ${latest.count_kept} for you` : "pick to start"}
-      </h3>
-      {busy && (
-        <div className="mono" style={{ color: "var(--ink-3)", fontSize: 11, marginTop: 8 }}>
-          updating…
-        </div>
-      )}
-      {latest?.degraded && (
-        <div className="mono" style={{ color: "var(--warn)", fontSize: 11, marginTop: 8 }}>
-          (using fallback ranking — search index unavailable)
-        </div>
-      )}
-      <div style={{ marginTop: 16, display: "grid", gap: 8 }}>
-        {(latest?.top || []).map((t) => (
-          <ToolRow key={t.slug} tool={t} />
-        ))}
-        {latest?.wildcard && (
-          <>
-            <div
-              className="mono"
-              style={{ color: "var(--ink-3)", fontSize: 11, marginTop: 8 }}
-            >
-              you might not expect →
+        {!done && busy && (
+          <div className="onb-q-wrap">
+            <div className="onb-q-meta">
+              <span className="mono onb-q-count">matching…</span>
             </div>
-            <ToolRow tool={latest.wildcard} />
-          </>
+            <div className="onb-q-card">
+              <h1 className="onb-q-title">Re-reading your profile.</h1>
+              <p className="onb-q-sub">
+                Embedding your answer + narrowing the catalog.
+              </p>
+              <div
+                className="mono"
+                style={{ marginTop: 16, color: "var(--ink-3)", fontSize: 12 }}
+              >
+                this usually takes &lt;1s
+              </div>
+            </div>
+          </div>
         )}
-        {!latest && (
-          <div className="mono" style={{ color: "var(--ink-3)", fontSize: 12 }}>
-            answer Q{step} to see your live ranking
+
+        {!done && !busy && currentQuestion && (
+          <LiveQuestionCard
+            step={step}
+            question={currentQuestion}
+            q1Value={q1Answer}
+            onQ1Change={setQ1Answer}
+            q2Options={q2Options}
+            q2Selected={q2Selected}
+            onQ2Toggle={(v) =>
+              setQ2Selected((prev) =>
+                prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v],
+              )
+            }
+            q3Options={q3Options}
+            q3Selected={q3Selected}
+            onQ3Pick={setQ3Selected}
+            q4Selected={q4Selected}
+            onQ4Pick={setQ4Selected}
+            onSubmit={submitStep}
+          />
+        )}
+
+        {error && !busy && (
+          <div
+            className="mono"
+            style={{ padding: 16, color: "var(--warn)", fontSize: 12 }}
+          >
+            {error}
+          </div>
+        )}
+
+        {done && latest && <LiveResultPanel latest={latest} />}
+      </div>
+    </div>
+  );
+}
+
+
+// =============================================================================
+// Per-step question card — mirrors classic QuestionCard styling
+// =============================================================================
+function LiveQuestionCard({
+  step,
+  question,
+  q1Value,
+  onQ1Change,
+  q2Options,
+  q2Selected,
+  onQ2Toggle,
+  q3Options,
+  q3Selected,
+  onQ3Pick,
+  q4Selected,
+  onQ4Pick,
+  onSubmit,
+}: {
+  step: 1 | 2 | 3 | 4;
+  question: LiveQuestion;
+  q1Value: { job_title: string; level: string; industry: string };
+  onQ1Change: (v: { job_title: string; level: string; industry: string }) => void;
+  q2Options: LiveOption[] | null;
+  q2Selected: string[];
+  onQ2Toggle: (v: string) => void;
+  q3Options: LiveOption[] | null;
+  q3Selected: string;
+  onQ3Pick: (v: string) => void;
+  q4Selected: string;
+  onQ4Pick: (v: string) => void;
+  onSubmit: (v: LiveAnswerValue) => void;
+}) {
+  const canAdvance =
+    (step === 1 && !!(q1Value.job_title && q1Value.level && q1Value.industry)) ||
+    (step === 2 && q2Selected.length > 0) ||
+    (step === 3 && !!q3Selected) ||
+    (step === 4 && !!q4Selected);
+
+  const handleSubmit = () => {
+    if (step === 1) onSubmit(q1Value);
+    else if (step === 2) onSubmit({ selected_values: q2Selected });
+    else if (step === 3) onSubmit({ selected_value: q3Selected });
+    else onSubmit({ selected_value: q4Selected });
+  };
+
+  return (
+    <div className="onb-q-wrap">
+      <div className="onb-q-meta">
+        <span className="mono onb-q-count">Question {step} of 4</span>
+      </div>
+      <div className="onb-q-card">
+        <h1 className="onb-q-title">{question.text}</h1>
+        {question.helper && (
+          <p className="onb-q-sub">{question.helper}</p>
+        )}
+
+        {step === 1 && (
+          <div className="onb-q-opts" style={{ display: "grid", gap: 16, marginTop: 24 }}>
+            {(["job_title", "level", "industry"] as const).map((key) => (
+              <div key={key}>
+                <label
+                  className="mono"
+                  style={{ fontSize: 11, color: "var(--ink-3)", display: "block", marginBottom: 6 }}
+                >
+                  {key.replace("_", " ")}
+                </label>
+                <select
+                  className="m-input"
+                  value={q1Value[key]}
+                  onChange={(e) => onQ1Change({ ...q1Value, [key]: e.target.value })}
+                  style={{ width: "100%" }}
+                >
+                  <option value="">— pick one —</option>
+                  {(question.sub_dropdowns?.[key] || []).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="onb-q-opts">
+            {(q2Options || []).map((opt, i) => {
+              const picked = q2Selected.includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  className={`onb-q-opt ${picked ? "on" : ""}`}
+                  onClick={() => onQ2Toggle(opt.value)}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  <span className="onb-q-bullet">
+                    <span className="onb-check">{picked ? "✓" : ""}</span>
+                  </span>
+                  <span className="onb-q-label">{opt.label}</span>
+                </button>
+              );
+            })}
+            {q2Options === null && (
+              <div className="mono" style={{ color: "var(--ink-3)", padding: 16 }}>
+                loading options for your role…
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="onb-q-opts">
+            {(q3Options || []).map((opt, i) => (
+              <button
+                key={opt.value}
+                className={`onb-q-opt ${q3Selected === opt.value ? "on" : ""}`}
+                onClick={() => onQ3Pick(opt.value)}
+                style={{ animationDelay: `${i * 50}ms` }}
+              >
+                <span className="onb-q-bullet">
+                  <span className="onb-radio" />
+                </span>
+                <span className="onb-q-label">{opt.label}</span>
+              </button>
+            ))}
+            {q3Options === null && (
+              <div className="mono" style={{ color: "var(--ink-3)", padding: 16 }}>
+                loading scenarios for your role…
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="onb-q-opts">
+            {(question.options || []).map((opt, i) => (
+              <button
+                key={opt.value}
+                className={`onb-q-opt ${q4Selected === opt.value ? "on" : ""}`}
+                onClick={() => onQ4Pick(opt.value)}
+                style={{ animationDelay: `${i * 50}ms` }}
+              >
+                <span className="onb-q-bullet">
+                  <span className="onb-radio" />
+                </span>
+                <span className="onb-q-label">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="onb-q-multi-foot" style={{ marginTop: 24 }}>
+          <span className="mono onb-q-skip" />
+          <MButton onClick={handleSubmit} variant="primary">
+            {step < 4 ? `Continue → Q${step + 1}` : "Finish & see my matches →"}
+          </MButton>
+        </div>
+        {!canAdvance && (
+          <div
+            className="mono"
+            style={{ marginTop: 8, fontSize: 11, color: "var(--ink-3)", textAlign: "right" }}
+          >
+            {step === 1
+              ? "pick all three"
+              : step === 2
+                ? "pick at least one"
+                : "pick one"}
           </div>
         )}
       </div>
@@ -478,61 +486,111 @@ function NarrowingPane({
 }
 
 
-function ToolRow({ tool }: { tool: LiveStepTool }) {
-  const layerColor =
-    tool.layer === "niche"
-      ? "var(--accent)"
-      : tool.layer === "relevant"
-        ? "var(--ink-1)"
-        : "var(--ink-3)";
+// =============================================================================
+// Result panel — mirrors classic ResultPanel (top-K from final live-step)
+// =============================================================================
+function LiveResultPanel({ latest }: { latest: LiveStepResponse }) {
+  const [stage, setStage] = useState(0);
+  useEffect(() => {
+    const t1 = setTimeout(() => setStage(1), 600);
+    const t2 = setTimeout(() => setStage(2), 1400);
+    const t3 = setTimeout(() => setStage(3), 2100);
+    return () => [t1, t2, t3].forEach(clearTimeout);
+  }, []);
+
+  const tools = latest.top.slice(0, 6);
+
   return (
-    <Link
-      href={`/p/${tool.slug}`}
-      style={{
-        textDecoration: "none",
-        color: "inherit",
-        padding: "10px 12px",
-        borderRadius: "var(--r-sm)",
-        border: "1px solid var(--line-0)",
-        display: "block",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <div>
-          <div className="h-card" style={{ fontSize: 13 }}>{tool.name || tool.slug}</div>
-          <div className="mono" style={{ color: "var(--ink-3)", fontSize: 10, marginTop: 2 }}>
-            {tool.reasoning_hook}
+    <div className="onb-result">
+      <div className="onb-result-eyebrow mono">/ for you, today</div>
+      <h1 className="onb-result-title">
+        Here are the <em>{tools.length || "few"}</em> tools
+        <br />
+        that actually fit you.
+      </h1>
+      <p className="onb-result-sub body-lg">
+        Built from your stack, your task shape, and the friction you flagged.
+        We&apos;ll keep refining as your profile sharpens.
+      </p>
+      {latest.degraded && (
+        <p className="mono" style={{ color: "var(--warn)", marginTop: 8, fontSize: 12 }}>
+          (using fallback ranking — search index unavailable)
+        </p>
+      )}
+
+      <div className={`onb-result-grid stage-${stage}`}>
+        {tools.map((t, i) => (
+          <LiveResultCard key={t.slug} tool={t} delay={i * 120} />
+        ))}
+
+        {latest.wildcard && (
+          <div
+            className="onb-result-skip-card"
+            style={{ transitionDelay: `${tools.length * 120}ms` }}
+          >
+            <span className="onb-skip-tag mono">YOU MIGHT NOT EXPECT</span>
+            <div className="h-card" style={{ marginTop: 12 }}>
+              {latest.wildcard.name || latest.wildcard.slug}
+            </div>
+            <p className="body" style={{ marginTop: 8 }}>
+              {latest.wildcard.tagline || latest.wildcard.reasoning_hook}
+            </p>
+            <div className="mono onb-skip-meta">— concierge surprise factor</div>
           </div>
-        </div>
-        <div className="mono" style={{ fontSize: 10, color: layerColor, textAlign: "right" }}>
-          {tool.layer || "—"}
-          <br />
-          <span style={{ color: "var(--ink-3)" }}>{tool.score.toFixed(2)}</span>
-        </div>
+        )}
       </div>
-    </Link>
+
+      <div className={`onb-result-cta ${stage >= 3 ? "in" : ""}`}>
+        <Link href="/home">
+          <MButton size="lg" trailing="→">
+            Enter Mesh
+          </MButton>
+        </Link>
+      </div>
+    </div>
   );
 }
 
 
-function Shell({ children }: { children: React.ReactNode }) {
+function LiveResultCard({
+  tool,
+  delay,
+}: {
+  tool: LiveStepTool;
+  delay: number;
+}) {
   return (
-    <div style={{ minHeight: "100vh", padding: "32px max(24px, 5vw)" }}>
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 32,
-        }}
+    <div
+      className="onb-result-card"
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      <Link
+        href={`/p/${tool.slug}`}
+        className="onb-result-card-top"
+        style={{ textDecoration: "none", display: "flex" }}
       >
-        <Link href="/" className="onb-brand">
-          <MeshMark size={20} />
-          <span>Mesh</span>
+        <div className="onb-result-logo">
+          <div className="onb-result-logo-inner">
+            {(tool.name || tool.slug)[0]?.toUpperCase()}
+          </div>
+        </div>
+        <div className="onb-result-name">
+          <div className="h-card">{tool.name || tool.slug}</div>
+          <div className="mono onb-result-tag">
+            {tool.category || tool.layer || "match"}
+          </div>
+        </div>
+      </Link>
+      <p className="body" style={{ marginTop: 16 }}>
+        {tool.reasoning_hook}
+      </p>
+      <div className="onb-result-card-actions">
+        <Link href={`/p/${tool.slug}`}>
+          <MButton size="sm" variant="ghost">
+            View on Mesh
+          </MButton>
         </Link>
-        <HeaderBell />
-      </header>
-      <main style={{ maxWidth: 1080, margin: "0 auto" }}>{children}</main>
+      </div>
     </div>
   );
 }

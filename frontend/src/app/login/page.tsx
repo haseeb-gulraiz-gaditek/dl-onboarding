@@ -40,11 +40,23 @@ export default function LoginPage() {
         router.replace("/home");
       }
     } catch (e) {
-      const msg =
-        e instanceof ApiError && typeof e.body === "object" && e.body && "detail" in e.body
-          ? "Wrong email or password."
-          : "Login failed.";
-      setErr(msg);
+      let code: string | null = null;
+      if (e instanceof ApiError && typeof e.body === "object" && e.body) {
+        const b = e.body as Record<string, unknown>;
+        if (b.detail && typeof b.detail === "object" && b.detail !== null
+          && "error" in (b.detail as Record<string, unknown>)) {
+          code = String((b.detail as Record<string, unknown>).error);
+        } else if (typeof b.error === "string") {
+          code = b.error;
+        }
+      }
+      if (code === "invalid_credentials") {
+        setErr("Wrong email or password.");
+      } else if (code === "rate_limited") {
+        setErr("Too many attempts. Wait a minute and try again.");
+      } else {
+        setErr("Login failed. Try again in a moment.");
+      }
     } finally {
       setBusy(false);
     }

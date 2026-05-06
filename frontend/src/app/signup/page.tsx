@@ -54,13 +54,31 @@ function SignupInner() {
         router.replace("/onboarding");
       }
     } catch (e) {
-      const msg =
-        e instanceof ApiError && typeof e.body === "object" && e.body && "error" in e.body
-          ? String((e.body as { error: unknown }).error)
-          : e instanceof ApiError && typeof e.body === "object" && e.body && "detail" in e.body
-            ? JSON.stringify((e.body as { detail: unknown }).detail)
-            : "Signup failed. Try a different email.";
-      setErr(msg);
+      // Pull the backend-provided error code from either body.error or
+      // body.detail.error (FastAPI HTTPException nests under detail).
+      let code: string | null = null;
+      if (e instanceof ApiError && typeof e.body === "object" && e.body) {
+        const b = e.body as Record<string, unknown>;
+        if (typeof b.error === "string") code = b.error;
+        else if (b.detail && typeof b.detail === "object" && b.detail !== null
+          && "error" in (b.detail as Record<string, unknown>)) {
+          code = String((b.detail as Record<string, unknown>).error);
+        }
+      }
+
+      if (code === "email_already_registered") {
+        setErr(
+          "That email is already registered. Try logging in instead.",
+        );
+      } else if (code === "invalid_email") {
+        setErr("That email doesn't look right. Double-check it.");
+      } else if (code === "password_too_short") {
+        setErr("Password must be at least 8 characters.");
+      } else if (code) {
+        setErr(`Signup failed: ${code.replace(/_/g, " ")}`);
+      } else {
+        setErr("Signup failed. Try again in a moment.");
+      }
     } finally {
       setBusy(false);
     }
@@ -145,6 +163,14 @@ function SignupInner() {
             {err && (
               <div className="mono" style={{ color: "var(--warn)", marginTop: 16 }}>
                 {err}
+                {err.startsWith("That email is already registered") && (
+                  <>
+                    {" "}
+                    <Link href="/login" style={{ textDecoration: "underline" }}>
+                      Log in →
+                    </Link>
+                  </>
+                )}
               </div>
             )}
 

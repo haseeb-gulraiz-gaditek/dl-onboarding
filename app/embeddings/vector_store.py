@@ -93,16 +93,16 @@ async def _get_weaviate_client() -> Any:
                 ),
             )
         else:
-            # Short init timeout so an unreachable Weaviate cloud (no
-            # network / firewall blocking gRPC) fails fast instead of
-            # blocking the request thread for ~30s on first call. The
-            # init probe failing caches _client=None and every later
-            # call short-circuits without re-trying.
+            # init=8s — gRPC handshake under VPN takes 3–5 RTTs which
+            # routinely exceeds 2s. Failure (no network / firewalled
+            # gRPC) still caps at 8s instead of the v4 client's ~30s
+            # default. The failure caches _client=None so subsequent
+            # calls short-circuit without re-trying.
             client = weaviate.use_async_with_weaviate_cloud(
                 cluster_url=url,
                 auth_credentials=Auth.api_key(api_key),
                 additional_config=AdditionalConfig(
-                    timeout=Timeout(init=2, query=5, insert=5),
+                    timeout=Timeout(init=8, query=10, insert=10),
                 ),
             )
         await client.connect()

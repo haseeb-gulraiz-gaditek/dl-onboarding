@@ -164,13 +164,145 @@ The cycle's later passes enforced these explicitly:
 
 ## Out of cycle (deferred to cycle #14)
 
-- `/c/[slug]` community room view
-- `/concierge` inbox
-- `/tools/{mine,explore,new}` tab pages (cycle #10 backend)
-- `/founders/launches/[id]/analytics` per-launch detail (cycle #11 backend has it)
-- `/admin/launches`, `/admin/catalog` queue views
-- Header bell + dropdown
+- `/c/[slug]` community room view *(shipped — cycle #14)*
+- `/concierge` inbox *(shipped — cycle #14)*
+- `/tools/{mine,explore,new}` tab pages *(shipped — cycle #14)*
+- `/founders/launches/[id]/analytics` per-launch detail *(shipped — cycle #14)*
+- `/admin/launches`, `/admin/catalog` queue views *(shipped — cycle #14)*
+- Header bell + dropdown *(shipped — cycle #14)*
 - httpOnly cookie auth (V1.5)
 - Activity feed endpoint + UI (V1.5; needs new backend)
 - TypeScript codegen from Pydantic (V1.5)
 - Production build / deploy
+
+---
+
+## Cycle #14 — frontend-secondary additions
+
+### F-FE2-1 — Global `<HeaderBell />` component
+
+`frontend/src/components/HeaderBell.tsx` mounts on every authenticated route.
+
+- On mount (only when `isAuthenticated()`), fires `GET /api/me/notifications/unread-count`. Badge shows count when > 0.
+- Click opens a dropdown listing the latest 10 notifications (`GET /api/me/notifications?limit=10`). Each row links to its own destination via the kind→link rules from `/home` (concierge_nudge → `/p/{tool_slug}`, launch_approved → `/p/{tool_slug}`, community_reply → `/concierge`).
+- "Mark all read" footer → `POST /api/me/notifications/read-all`.
+- Also fires `GET /api/me/notifications/banner` on mount; non-null `concierge_nudge` surfaces a dismissable top-of-page banner with "view tool →" CTA. × dismiss → `POST /api/me/notifications/{id}/read`.
+- Returns `null` if not authenticated.
+- Wrapper renders as `position: fixed; top: 16; right: 16; z-index: 60` so it never gets clipped by page chrome. Dropdown is `position: fixed; top: 60; right: 16; z-index: 70` with viewport-clamped width. `mousedown` outside the wrapper closes the dropdown.
+- Visible label: a bell SVG + "Inbox" text in a pill (the `◌` glyph used during initial implementation was indistinguishable from the Communities nav glyph).
+
+`/login` and `/signup` do NOT include it.
+
+### F-FE2-2 — Admin detection probe
+
+`frontend/src/lib/admin.ts` exposes `probeAdminAndCache()`. Called on `/home` mount when `localStorage["mesh.isAdmin"]` is unset.
+
+- Fires `GET /admin/launches?status=pending`:
+  - 200 → sets `localStorage["mesh.isAdmin"] = "1"`
+  - 403 → sets `localStorage["mesh.isAdmin"] = "0"`
+  - network error / other → does nothing (retried on next /home mount)
+- `isAdmin()` reads the cached flag.
+- Cleared on `logout()`.
+
+The global HeaderBell reads `isAdmin()` and adds an "Admin" link to the dropdown footer when true. `/home` left rail (both roles) also adds an "Admin" nav item when the flag is set.
+
+### F-FE2-3 — `/c/[slug]` community room
+
+Wired against cycle #7. Reads `GET /api/communities/{slug}` (hero + is_member), `GET /api/communities/{slug}/posts` (cursor pagination, "Load more"), `GET /api/communities` (sister rooms — same category, exclude self).
+
+Writes: `POST /api/communities/{slug}/{join,leave}`, `POST /api/posts {community_slug, title, body_md, cross_post_slugs:[]}`, `POST /api/votes {target_type:"post", target_id, direction:1|-1}`.
+
+Filter tabs (all/hot/verdicts/auto) are client-side filters over the same posts array.
+
+V1 hardcoded sections (UI-labeled placeholder): room pulse sparkline, axis breakdown bars, live readers strip, room rules.
+
+Founders see the read-only view (compose form + vote buttons hidden); cycle #7 F-COM-8 enforces 403 at the route layer.
+
+### F-FE2-4 — `/concierge` inbox (rendered as "Inbox" in user-visible copy)
+
+Three-column layout. Wired against cycle #12.
+
+- **Left:** `GET /api/me/notifications?limit=50`, newest-first.
+- **Center:** for the selected notification, ONE message (V1 simplification). Kind drawn from `notification.kind`; payload fields rendered as evidence.
+- **Right:** generic per-kind reasoning copy. No real per-notification scoring exposed (V1.5).
+
+Reply composer only for `concierge_nudge`: "Tell me more" → `POST /api/concierge/respond {action:"tell_me_more"}` + opens redirect_url in new tab. "Skip" → `POST .../respond {action:"skip"}`.
+
+User-visible label is **"Inbox"** in the bell pill, the left-rail nav item, the page header, and the landing footer link. Route stays `/concierge`; backend kinds keep `concierge_*` identifiers.
+
+### F-FE2-5 — `/tools/{mine,explore,new}` tab pages
+
+Wired against cycle #10. Shared tab-strip layout in `frontend/src/app/tools/layout.tsx`.
+
+- `/tools/mine` — `GET /api/me/tools`, optional `?status=using|saved` client-side filter. Inline `PATCH /api/me/tools/{tool_id}` for status flip; inline `DELETE /api/me/tools/{tool_id}` for unsave (with confirmation).
+- `/tools/explore` — `GET /api/tools` with optional category/label/`q` filters. "Load more" via `?before=` cursor. Per-card "Save to my tools" button → `POST /api/me/tools`.
+- `/tools/new` — `GET /api/launches`, default filter (joined communities only) controlled by `?all=true` UI toggle. Each card shows `in_my_communities` badges.
+
+Every card links to `/p/{slug}`.
+
+### F-FE2-6 — `/founders/launches/[id]/analytics`
+
+Wired against cycle #11 `GET /api/founders/launches/{id}/analytics`. Founder-only. Backend's ownership-gated 404 surfaces as "launch not found" UI.
+
+Renders headline counts (matched / tell_me_more / skip / total_clicks), `clicks_by_community` as horizontal bars, `clicks_by_surface` as donut/legend. Reachable from each `FounderLaunchRow` on `/home` ("View analytics →" link).
+
+Constitutional anonymization preserved — never tries to fetch user identities.
+
+### F-FE2-7 — `/admin/launches` (admin queue)
+
+UI-gated by probe-detected admin status; backend-gated by `require_admin()` (cycle #3 F-CAT-4).
+
+`GET /admin/launches?status=pending` (tabs for approved/rejected/all). Each row: founder email + product_url + problem_statement + submitted date.
+
+- **Approve** → `POST /admin/launches/{id}/approve`. On 200 the row updates to approved status with link to `/p/{approved_tool_slug}`.
+- **Reject** → progressive disclosure: click "Reject" reveals an inline textarea (placeholder "why?") + Confirm button; Confirm → `POST /admin/launches/{id}/reject {comment}`.
+
+### F-FE2-8 — `/admin/catalog` (admin tool curation)
+
+`GET /admin/catalog?status=pending|approved|rejected`. Each row: slug + name + tagline + category + curation_status.
+
+- **Approve** → `POST /admin/catalog/{slug}/approve`.
+- **Reject** → `POST /admin/catalog/{slug}/reject {comment}` with the same progressive-disclosure textarea pattern as `/admin/launches`.
+
+### F-FE2-9 — Sign-out clears admin cache
+
+`logout()` (cycle #13's auth helper) also clears `localStorage["mesh.isAdmin"]` so the next account doesn't inherit a stale admin flag.
+
+### F-FE2-10 — `/communities` browse page
+
+`/home` cycle #13's "Communities" left-rail item linked to a scroll target; the empty state had no CTA, so first-time users couldn't discover or join rooms without manually typing `/c/{slug}`.
+
+`frontend/src/app/communities/page.tsx`:
+- Reads `GET /api/communities` for the full list (both roles).
+- For users, also reads `GET /api/me/communities` to compute `joined`. Writes: `POST /api/communities/{slug}/join`, `DELETE /api/communities/{slug}/leave` with confirm.
+- Founders see Open→ only (read-only; backend enforces 403 on join).
+- Filter tabs (all / role / stack / outcome) over the same array.
+- Each card links to `/c/{slug}`.
+
+`/home` rewires:
+- Left-rail "Communities" → `<Link href="/communities">` (was scroll-to-section).
+- Empty state ("you haven't joined any rooms yet") gains a "→ browse communities" link.
+- Joined community rows are now `<Link href="/c/{slug}">` (were divs).
+- Founder home gains a "Communities" left-rail item linking to `/communities`.
+
+---
+
+## Cycle #14 — backend / publish-path additions
+
+### F-LAUNCH-7 — Smarter slug + name derivation from product URL
+
+`derive_tool_slug()` in `app/launches/slug.py` strips noise subdomain prefixes (`www.`, `app.`, `my.`, `go.`, `try.`, `get.`, `dashboard.`, `admin.`, `portal.`, `beta.`, `staging.`) idempotently AND strips the TLD before slug normalization.
+
+`admin_approve` in `app/api/admin_launches.py` derives the friendly tool name as title-cased every slug segment (not just the first), so `content-planner` becomes `"Content Planner"` instead of `"Content"`.
+
+Verified mappings:
+- `https://app.contentplanner.site` → slug `contentplanner`, name `Contentplanner`
+- `https://www.zapier.com` → `zapier` / `Zapier`
+- `https://notion.so` → `notion` / `Notion`
+- `https://multi-word.tool.app` → `multi-word-tool` / `Multi Word Tool`
+
+### F-EMB-7 — Fast-fail Weaviate init timeout
+
+`_get_weaviate_client()` in `app/embeddings/vector_store.py` passes `AdditionalConfig(timeout=Timeout(init=2, query=5, insert=5))` to `weaviate.use_async_with_weaviate_cloud(...)`.
+
+The first POST `/admin/launches/{id}/approve` on a machine where Weaviate Cloud's gRPC port is unreachable used to hang ~30s on the gRPC health probe before the failure was cached. With a 2s init timeout, the first approve now returns in <3s; subsequent approves short-circuit immediately because `_client` is cached as `None`. Operations under a healthy connection are unaffected.

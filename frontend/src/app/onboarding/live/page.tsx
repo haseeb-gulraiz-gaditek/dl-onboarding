@@ -262,7 +262,7 @@ function LiveTapLoop() {
             progress={progress}
             highlightedTags={accumulatedTags}
             mode="score"
-            gridSlots={Math.min(slotCount, graphTools.length || slotCount)}
+            gridSlots={graphTools.length || slotCount}
             scale={1.4}
             tools={graphTools.length > 0 ? graphTools : undefined}
           />

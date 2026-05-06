@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.middleware import require_role
 from app.db.live_answers import get_user_live_answers, upsert_live_answer
+from app.db.profiles import get_or_create_profile
 from app.models.recommendation import RecommendationsResponse
 from app.onboarding.match import count_distinct_answers
 from app.recommendations.engine import generate_recommendations
@@ -85,6 +86,14 @@ async def live_step(
 ) -> LiveStepResponse:
     """F-LIVE-2: persist answer + re-embed + hybrid query → ranked
     list with score-band layers + wildcard. Founders → 403."""
+    # Ensure the user has a profiles row (the live flow doesn't go
+    # through /api/questions/next which is what classic onboarding
+    # uses to lazy-create profiles). Without this, ensure_profile_
+    # embedding bails silently and live_match falls back to a zero-
+    # vector similarity_search that returns tools in Mongo insertion
+    # order — i.e., garbage for ranking.
+    await get_or_create_profile(user)
+
     # Persist this step's answer (upsert per (user, q_index)).
     await upsert_live_answer(
         user_id=user["_id"],

@@ -91,6 +91,10 @@ async def ensure_tool_embedding(slug: str) -> bool:
             "category": tool.get("category"),
             "curation_status": "approved",  # only approved tools get embedded
             "labels": tool.get("labels") or [],
+            # Cycle #15 hybrid-search BM25 surface — full-text fields.
+            "name": tool.get("name") or "",
+            "tagline": tool.get("tagline") or "",
+            "description": tool.get("description") or "",
         },
     )
     return True

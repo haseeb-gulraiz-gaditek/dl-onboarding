@@ -163,7 +163,7 @@ async def init_weaviate_schema() -> int:
     created = []
     skipped = []
 
-    for cls_name, properties in [
+    schema_spec = [
         (
             TOOL_CLASS,
             [
@@ -171,6 +171,12 @@ async def init_weaviate_schema() -> int:
                 Property(name="category", data_type=DataType.TEXT),
                 Property(name="curation_status", data_type=DataType.TEXT),
                 Property(name="labels", data_type=DataType.TEXT_ARRAY),
+                # Cycle #15 hybrid-search BM25 surface (F-LIVE addendum):
+                # full-text properties so the keyword side of hybrid
+                # search has rich phrasing to match against.
+                Property(name="name", data_type=DataType.TEXT),
+                Property(name="tagline", data_type=DataType.TEXT),
+                Property(name="description", data_type=DataType.TEXT),
             ],
         ),
         (
@@ -179,23 +185,45 @@ async def init_weaviate_schema() -> int:
                 Property(name="user_id", data_type=DataType.TEXT),
             ],
         ),
-    ]:
-        if await client.collections.exists(cls_name):
-            skipped.append(cls_name)
+    ]
+
+    extended: list[str] = []
+    for cls_name, properties in schema_spec:
+        if not await client.collections.exists(cls_name):
+            await client.collections.create(
+                name=cls_name,
+                properties=properties,
+                vectorizer_config=Configure.Vectorizer.none(),
+                vector_index_config=Configure.VectorIndex.hnsw(
+                    distance_metric=VectorDistances.COSINE,
+                ),
+            )
+            created.append(cls_name)
             continue
-        await client.collections.create(
-            name=cls_name,
-            properties=properties,
-            vectorizer_config=Configure.Vectorizer.none(),
-            vector_index_config=Configure.VectorIndex.hnsw(
-                distance_metric=VectorDistances.COSINE,
-            ),
-        )
-        created.append(cls_name)
+
+        # Class exists — additive migration: add any properties that
+        # aren't there yet. Weaviate v4 supports add_property on a
+        # live class without recreate / data loss.
+        col = client.collections.use(cls_name)
+        cfg = await col.config.get()
+        existing_names = {p.name for p in (cfg.properties or [])}
+        for prop in properties:
+            if prop.name in existing_names:
+                continue
+            try:
+                await col.config.add_property(prop)
+                extended.append(f"{cls_name}.{prop.name}")
+            except Exception as exc:
+                print(
+                    f"[init-weaviate] could not add {cls_name}.{prop.name}: {exc}",
+                    flush=True,
+                )
+        skipped.append(cls_name)
 
     print(
         f"[init-weaviate] created: {created or '(none)'} | "
-        f"already-existed: {skipped or '(none)'}",
+        f"already-existed: {skipped or '(none)'} | "
+        f"properties added: {extended or '(none)'}",
         flush=True,
     )
     return 0

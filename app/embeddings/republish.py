@@ -43,6 +43,10 @@ async def republish_tools() -> dict[str, int]:
                     "category": tool.get("category"),
                     "curation_status": tool.get("curation_status", "approved"),
                     "labels": tool.get("labels") or [],
+                    # Cycle #15 hybrid-search BM25 surface.
+                    "name": tool.get("name") or "",
+                    "tagline": tool.get("tagline") or "",
+                    "description": tool.get("description") or "",
                 },
             )
             published += 1

@@ -87,6 +87,10 @@ async def _ensure_fl_tool_embedding(slug: str) -> None:
             "category": tool.get("category"),
             "curation_status": "approved",
             "labels": tool.get("labels") or [],
+            # Cycle #15 hybrid-search BM25 surface — full-text fields.
+            "name": tool.get("name") or "",
+            "tagline": tool.get("tagline") or "",
+            "description": tool.get("description") or "",
         },
     )
 

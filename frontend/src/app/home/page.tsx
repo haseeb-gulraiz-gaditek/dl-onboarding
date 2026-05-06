@@ -262,7 +262,7 @@ function HomeLeftRail({
         </Link>
         <Link href="/concierge" className="home-nav-item">
           <span className="home-nav-glyph">⌬</span>
-          <span className="home-nav-label">Concierge</span>
+          <span className="home-nav-label">Inbox</span>
         </Link>
         <Link href="/onboarding" className="home-nav-item">
           <span className="home-nav-glyph">◎</span>
@@ -710,7 +710,7 @@ function FounderHome({
             <p className="home-subgreet body">
               Mesh staff verifies launches within ~24 hours. Once approved,
               your launch fans into your target communities and matched
-              users get a concierge nudge.
+              users get a personalized nudge in their inbox.
             </p>
           </div>
         </header>

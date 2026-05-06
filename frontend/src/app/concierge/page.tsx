@@ -139,7 +139,7 @@ export default function ConciergePage() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
           <MeshMark size={18} />
-          <span className="h-card">concierge</span>
+          <span className="h-card">inbox</span>
         </div>
         {loading ? (
           <div className="mono" style={{ color: "var(--ink-3)", fontSize: 12 }}>loading…</div>
@@ -216,7 +216,7 @@ function ConversationPanel({
   return (
     <div>
       <div className="mono" style={{ color: "var(--ink-3)", fontSize: 11 }}>
-        / concierge thread
+        / inbox · message
       </div>
       <h1 className="h-display" style={{ fontSize: 32, marginTop: 8 }}>
         {KIND_LABELS[n.kind] || n.kind}
@@ -227,7 +227,7 @@ function ConversationPanel({
         style={{ padding: 20, marginTop: 24 }}
       >
         <div className="mono" style={{ color: "var(--ink-2)", fontSize: 11 }}>
-          mesh concierge · {relativeTime(n.created_at)} ago
+          mesh · {relativeTime(n.created_at)} ago
         </div>
         <p className="body-lg" style={{ marginTop: 8 }}>
           {n.kind === "concierge_nudge" && slug && (

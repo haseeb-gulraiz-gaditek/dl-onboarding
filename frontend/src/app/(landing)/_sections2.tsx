@@ -368,7 +368,7 @@ export function Footer() {
             <a>Onboarding</a>
             <a>Communities</a>
             <a>Tools</a>
-            <a>Concierge</a>
+            <a>Inbox</a>
           </div>
           <div>
             <div className="eyebrow">Founders</div>

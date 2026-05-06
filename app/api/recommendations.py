@@ -9,9 +9,12 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from datetime import datetime, timedelta, timezone
+
 from app.auth.middleware import require_role
 from app.db.live_answers import get_user_live_answers, upsert_live_answer
 from app.db.profiles import get_or_create_profile
+from app.db.recommendations import upsert_for_user as upsert_rec_cache
 from app.models.recommendation import RecommendationsResponse
 from app.onboarding.match import count_distinct_answers
 from app.recommendations.engine import generate_recommendations
@@ -117,6 +120,30 @@ async def live_step(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={"error": "live_step_unavailable"},
         )
+
+    # Cache the live result as the user's recommendations so /home's
+    # call to /api/recommendations hits the cache and returns instantly
+    # — no GPT-5 rerank delay. Q4 picks become the post-onboarding
+    # recs; earlier steps overwrite the cache as the profile sharpens.
+    now = datetime.now(timezone.utc)
+    pick_dicts = [
+        {
+            "tool_slug": t["slug"],
+            "verdict": "try",
+            "reasoning": t.get("reasoning_hook")
+                or f"Matched your live profile (score {t['score']:.2f}).",
+            "score": float(t["score"]),
+        }
+        for t in result.top
+    ]
+    await upsert_rec_cache(user["_id"], {
+        "user_id": user["_id"],
+        "picks": pick_dicts,
+        "launch_picks": [],
+        "generated_at": now,
+        "cache_expires_at": now + timedelta(days=7),
+        "degraded": result.degraded,
+    })
 
     return LiveStepResponse(
         step=result.step,

@@ -428,10 +428,11 @@ items:
   - id: 13
     summary: "frontend-core"
     priority: high
-    status: in_progress
+    status: done
     added: 2026-05-03
     promoted_to_cycle: "frontend-core"
     promoted_at: "2026-05-03"
+    completed_at: "2026-05-06"
     notes: |
       Demo-day primary frontend path. Wires the 5 highest-value
       screens against the existing API surface, plus one tiny
@@ -586,3 +587,158 @@ items:
         - Real launch reach forecast model
 
       Size: M. Depends on: #3, #7, #8, #9, #10, #11, #12, #13.
+
+  - id: 15
+    summary: "live-narrowing-onboarding"
+    priority: high
+    status: queued
+    added: 2026-05-06
+    notes: |
+      Live-narrowing onboarding via Weaviate hybrid search. Replaces
+      the current batch onboarding-then-recommend flow with a 4-question
+      flow that re-embeds the accumulated profile after each answer and
+      pushes a shrinking ranked list of tools to the UI in real time
+      (20 → 15 → 10 → 6).
+
+      ALGORITHM (locked):
+        - 4-question onboarding; after each answer, re-embed full
+          accumulated profile_text and run Weaviate hybrid query against
+          the tool index to push top-K to UI.
+        - Single-vector cosine(user_profile_vector, tool_vector). NO
+          pre-clustering of tools — preserves cross-cluster surfacing
+          (Mesh's selling point).
+        - Score-band layering replaces clusters: general (s≥0.55) /
+          relevant (s≥0.65) / niche (s≥0.75). Tools naturally rise
+          as embedding sharpens with each answer.
+        - Always include 1 wildcard from outside top band (concierge
+          surprise factor).
+
+      QUESTION SCHEMA (4 questions, MCQ-first):
+        - Q1: dropdowns — job title (typeable+suggestions) / level /
+          industry. Anchors domain.
+        - Q2: multi-select chips — "which of these do you actually have
+          open most days?" Role-conditioned options (e.g. ACCA: Excel /
+          Outlook / Sharepoint / Teams / SAP / ChatGPT; SWE: VS Code /
+          Terminal / GitHub / Linear / Slack / Postgres / Datadog /
+          Copilot; Doctor: Epic / UpToDate / Outlook / Teams / Lab
+          portal / WhatsApp). Hand-curate top ~30 roles, LLM-generate
+          long tail (cached per role).
+        - Q3: single-select — "pick the closest big-task scenario you
+          actually finish." 5 role-conditioned plain-language scenarios.
+        - Q4: friction — "what slows you down most this week?"
+          single-select. Options: repetitive copy/paste between apps ·
+          searching for info I already wrote · drafting the same kind
+          of doc/email · catching up after meetings · finding the right
+          tool · manual data cleanup · waiting on people. Maps to
+          friction vocabulary tools actually use (replaced earlier
+          day-flow draft because tools don't describe themselves with
+          day-shape vocab).
+
+      HYBRID SEARCH SCHEDULE (Weaviate alpha):
+        - Q1: alpha=0.3 (70% keyword/filters on role+industry, 30%
+          vector — sparse signals lead)
+        - Q2: alpha=0.5 (50/50 — stack tokens are sparse-friendly)
+        - Q3: alpha=0.7 (30/70 — task vocab is semantic)
+        - Q4: alpha=0.8 (20/80 — friction phrasing is semantic)
+
+      K SCHEDULE (UI shrink):
+        - After Q1: 20
+        - After Q2: 15
+        - After Q3: 10
+        - After Q4: 6
+
+      PIPELINE PER QUESTION (~200ms target):
+        1. Append answer to profile_text (structured paragraph)
+        2. embed(profile_text) → user_vector (~150ms OpenAI)
+        3. Weaviate hybrid(query=profile_text, vector=user_vector,
+           alpha=schedule[q], filter={curation_status:'approved'},
+           limit=K+1 wildcard) (~10ms)
+        4. Hydrate full tool data from Mongo by slug (~5ms)
+        5. Apply score-band layer labels (general / relevant / niche)
+        6. Return top-K + 1 wildcard + layer assignments
+
+      STORAGE (already in place, unchanged):
+        - Mongo tools_seed: source of truth (slug, name, description,
+          category, labels, integrations, embedding, curation_status)
+        - Weaviate ToolEmbedding class: production search index,
+          dual-write via app/embeddings/lifecycle.py
+        - UUID derivation: uuid5(NAMESPACE_DNS, "mesh-tool-{slug}") —
+          idempotent
+
+      WHAT STAYS UNTOUCHED:
+        - Weaviate connection + tool indexing
+          (app/embeddings/vector_store.py)
+        - OpenAI embedding pipeline
+          (app/embeddings/openai.py, lifecycle.py)
+        - Existing engine.py + GPT-5 reranker for post-onboarding
+          cached recs (still used after final-Q4 submit persists
+          profile vector)
+        - Mongo recommendations cache (7-day TTL)
+
+      WHAT'S NEW:
+        - app/recommendations/live_engine.py (~80 lines): build
+          profile_text, embed, hybrid query, layer-label
+        - POST /api/recommendations/live-step endpoint
+          input: {answers_so_far}
+          output: {step, top:[{slug,name,score,layer,reasoning_hook}],
+                   count_kept}
+        - app/onboarding/questions.py update: replace existing
+          question set with 4 locked questions; add q_index for
+          K-budget
+        - frontend/src/app/onboarding/live page: animates list
+          shrinking, layer chips ("general"/"relevant"/"niche")
+        - Role-template store: hand-curated option sets for ~30
+          most common roles + LLM-fallback (cached per role) for
+          Q2/Q3 dynamic options
+        - Per-question profile-text builder that grows the structured
+          paragraph
+
+      PROFILE PERSISTENCE:
+        - Live narrowing uses ephemeral throwaway vectors per step
+        - On final Q4 submit: call ensure_profile_embedding(user)
+          with final profile_text — persists to Mongo+Weaviate so
+          existing recommendation cache + GPT-5 reranker keep working
+
+      EXPLICITLY OUT OF SCOPE:
+        - Pre-clustering tools (would penalize cross-cluster tools)
+        - Neo4j / graph DB (deferred to V1.5+ when USES/REJECTED
+          edges accumulate from real users)
+        - Causal uplift / Thompson sampling (V2/V3 — needs logged
+          outcomes)
+        - Replacing the existing /api/recommendations engine (live
+          narrowing IS the onboarding moment; later recs still go
+          through engine.py + cache + GPT-5 reranker)
+
+      VALIDATION (already partially built):
+        - validation/approach1/ contains hand-tagged 6-dim feature
+          scorer + 3 personas (ACCA, SWE, Doctor) — keep as
+          no-embedding baseline for A/B
+        - Re-run validation after live-step ships: persona walkthrough
+          showing 20→15→10→6 narrowing per persona, score-band layer
+          assignments, gold-rank agreement
+
+      ROLLOUT:
+        - Feature-flag the new /onboarding/live page; old onboarding
+          stays available
+        - A/B test new vs old by completion rate + adoption rate of
+          recommended tools
+        - Promote when new flow shows ≥70% recall@10 vs founder-graded
+          gold ranks
+
+      EFFORT: ~3 days backend + 2 days frontend. No schema migration.
+      Reversible.
+
+      REFS:
+        - validation/onboarding-v1-locked.md (Q1-Q4 schema +
+          ACCA/SWE/Doctor walkthroughs)
+        - validation/approaches.md (Approach 1 baseline + revised
+          architecture)
+        - validation/research-onboarding-questions.md (question
+          design principles)
+        - scratch/algo-research/SYNTHESIS.md (full 16-iter algorithm
+          research)
+        - scratch/algo-research/iterations/iter-12.md (long-context
+          Sonnet rerank — used post-onboarding via existing GPT-5
+          path)
+
+      Size: M. Depends on: existing Weaviate + embeddings pipeline.

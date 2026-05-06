@@ -519,3 +519,60 @@ learnings:
       migrate it, unless the early name is wrong (not just
       different).
     category: process
+  - date: 2026-05-06
+    cycle: "frontend-core"
+    insight: |
+      Porting a design template wholesale brings its mock data
+      with it. The mesh-app design had hardcoded "Recent activity"
+      rows, "profile graph" tag lists, and a sample-community
+      picker that READ FROM A FRONTEND CONSTANT, not the backend
+      that already had GET /api/communities. I shipped these as-is
+      in the first pass; the user caught every one in a single
+      audit ("a lot of elements are fake"). Pattern for future
+      design ports: walk every authenticated screen with a single
+      question — "where does this data come from?" — and either
+      wire to a real endpoint or remove it. Authoritative answer
+      should NEVER be "from a frontend constant."
+    category: process
+  - date: 2026-05-06
+    cycle: "frontend-core"
+    insight: |
+      pointer-events:none on a parent kills clicks on every
+      descendant. The /founders/launch community picker lived
+      inside .onb-graph-meta (a glass-overlay container with
+      pointer-events:none so the canvas pulse shows through).
+      Chips inherited the property silently. Tests would not
+      catch it; only manual click-testing reveals. Pattern: when
+      adding interactive elements to a page, explicitly check
+      the closest ancestor with pointer-events:none and either
+      lift the element out or add pointer-events:auto on the
+      element itself.
+    category: tooling
+  - date: 2026-05-06
+    cycle: "frontend-core"
+    insight: |
+      Form validation that fires on submit feels broken. The
+      original /founders/launch validated everything on the
+      final submit click — a user filling step 5's pitch field
+      and clicking Submit got "Product URL must start with
+      http://" (a step-1 error) with no clear way to find the
+      offending field. Per-step gating ("Continue" disabled until
+      this step's required fields are valid) plus inline error
+      hints (URL warning shown directly under the URL field as
+      you type) make the failure local to where the user is
+      looking. Pattern: validate at the boundary of each step;
+      surface errors next to the field, not at the destination.
+    category: process
+  - date: 2026-05-06
+    cycle: "frontend-core"
+    insight: |
+      Role-aware surfaces beat "render everything, hide for the
+      wrong role." The first /home for founders rendered the user
+      shell with empty Fresh-for-you / Stack / Communities sections
+      because the API calls returned 403. User confusion ("none
+      of this makes sense"). Better: detect role at /api/me, mount
+      a different component tree per role. Founder gets a launch
+      dashboard view (cycle #11 backend), not a degraded user
+      view. Pattern: if a screen serves multiple roles, branch
+      at the top, not at every section.
+    category: architecture

@@ -8,13 +8,16 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: frontend-core
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-03T20:00:00+05:00"
-  tracker_ref: "backlog:13"
-  base_branch: main
-  branch_name: frontend-core
+  slug: null
+  phase: null                # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
+  - slug: frontend-core
+    completed: "2026-05-06"
+    summary: "Two-process Mesh: app/ (FastAPI, unchanged) + new frontend/ (Next.js 14 / React 18 / TS / pure-CSS OKLCH tokens). Added 2 small backend endpoints (GET /api/me/communities + GET /api/me/profile-summary; 10 tests; full suite 286 green) and CORS middleware. Wired 7 routes against real APIs: / (landing), /signup (role toggle), /login, /onboarding (tap-question loop, user role only), /home (role-aware — user gets stack+nudges+fresh+communities+profile graph; founder gets launch dashboard from cycle #11), /founders/launch (5-step form + community picker fed by GET /api/communities, per-step gating, inline URL validation), /p/[slug]. Multiple audit passes addressed user feedback: removed hardcoded fake elements (activity feed, hardcoded profile-graph tags, hardcoded community picker), made every tool-slug reference clickable to /p/{slug}, fixed pointer-events bug on community chips, replaced /founders/launch's silent slug-mismatch with raw-answer rendering on stack panel, split user vs founder /home, fixed dead nav, split /signup + /login pages with role toggle. Four new learnings: design templates bring mock data, pointer-events:none kills descendant clicks silently, per-step form validation beats end-of-flow surprise, role-aware surfaces beat hidden sections."
   - slug: notifications-in-app
     completed: "2026-05-03"
     summary: "In-app inbox over the existing notifications collection (no new collections). Five read endpoints behind current_user (role-agnostic): list with cursor pagination + unread_only filter, unread-count for the bell badge, dedicated banner endpoint for the most-recent unread concierge_nudge, idempotent mark-single (404 on non-owner — existence-leak protection), bulk read-all. New community_reply trigger on POST /api/comments (cycle #7 F-COM-5 MODIFIED): when commenter != post.author_user_id, write a notification with payload {post_id, comment_id, commenter_display_name}; self-replies skipped; trigger wrapped in try/except at the call site so the comment write is never aborted. Naming reconciliation: cycle #9's `concierge_nudge` is documented as synonymous with backlog's `launch_match` — no migration. `new_recommendation` and `system` kinds reserved but no V1 trigger. 20 tests; full suite 276 green."

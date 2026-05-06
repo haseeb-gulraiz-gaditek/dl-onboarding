@@ -251,16 +251,13 @@ function HomeLeftRail({
           <span className="home-nav-glyph">✦</span>
           <span className="home-nav-label">Discover</span>
         </Link>
-        <button
-          className="home-nav-item"
-          onClick={() => scrollTo("home-communities")}
-        >
+        <Link href="/communities" className="home-nav-item">
           <span className="home-nav-glyph">◌</span>
           <span className="home-nav-label">Communities</span>
           {communityCount > 0 && (
             <span className="home-nav-count mono">{communityCount}</span>
           )}
-        </button>
+        </Link>
         <Link href="/concierge" className="home-nav-item">
           <span className="home-nav-glyph">⌬</span>
           <span className="home-nav-label">Concierge</span>
@@ -408,21 +405,42 @@ function HomeCenter({
       <section className="home-section" id="home-communities">
         <div className="home-section-head">
           <h2 className="home-section-title">Your communities</h2>
+          <Link href="/communities" className="mono home-section-link">
+            browse all ↗
+          </Link>
         </div>
         <div className="home-coms">
           {communities.length === 0 && (
-            <div className="mono" style={{ color: "var(--ink-3)" }}>
-              you haven&apos;t joined any rooms yet
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="mono" style={{ color: "var(--ink-3)" }}>
+                you haven&apos;t joined any rooms yet
+              </div>
+              <Link
+                href="/communities"
+                className="mono"
+                style={{
+                  color: "var(--accent)",
+                  textDecoration: "underline",
+                  fontSize: 13,
+                }}
+              >
+                → browse communities
+              </Link>
             </div>
           )}
           {communities.map((c) => (
-            <div key={c.slug} className="home-com-row">
+            <Link
+              key={c.slug}
+              href={`/c/${c.slug}`}
+              className="home-com-row"
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
               <span className={`onb-com-dot axis-${c.category}`} />
               <span className="mono home-com-name">{c.name}</span>
               <span className="mono home-com-members">
                 {c.member_count.toLocaleString()}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -607,6 +625,10 @@ function FounderHome({
           <Link href="/concierge" className="home-nav-item">
             <span className="home-nav-glyph">⌬</span>
             <span className="home-nav-label">Concierge</span>
+          </Link>
+          <Link href="/communities" className="home-nav-item">
+            <span className="home-nav-glyph">◌</span>
+            <span className="home-nav-label">Communities</span>
           </Link>
           {admin && (
             <Link href="/admin/launches" className="home-nav-item" style={{ color: "var(--accent)" }}>

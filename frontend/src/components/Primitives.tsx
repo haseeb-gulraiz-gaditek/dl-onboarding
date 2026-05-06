@@ -16,6 +16,7 @@ interface MButtonProps {
   icon?: React.ReactNode;
   trailing?: React.ReactNode;
   type?: "button" | "submit";
+  disabled?: boolean;
 }
 
 export function MButton({
@@ -26,11 +27,13 @@ export function MButton({
   icon,
   trailing,
   type = "button",
+  disabled = false,
 }: MButtonProps) {
   return (
     <button
       type={type}
       onClick={onClick}
+      disabled={disabled}
       className={`m-btn m-btn-${variant} m-btn-${size}`}
     >
       {icon && <span className="m-btn-icon">{icon}</span>}

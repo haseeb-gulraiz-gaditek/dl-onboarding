@@ -185,25 +185,42 @@ export function HeaderBell() {
             position: "relative",
             padding: "6px 10px",
             borderRadius: "var(--r-pill)",
-            background: "transparent",
-            color: "var(--ink-1)",
-            fontSize: 16,
+            background: "var(--bg-2)",
+            border: "1px solid var(--line-0)",
+            color: "var(--ink-0)",
+            fontSize: 13,
             cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            lineHeight: 1,
           }}
-          title="Notifications"
+          title="Notifications — open inbox"
+          aria-label="Notifications"
         >
-          ◌
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+          </svg>
+          <span>Inbox</span>
           {unread > 0 && (
             <span
               style={{
-                position: "absolute",
-                top: -2,
-                right: -2,
                 background: "var(--accent)",
                 color: "var(--accent-ink)",
                 borderRadius: "999px",
                 fontSize: 10,
-                padding: "0 5px",
+                padding: "0 6px",
                 minWidth: 16,
                 lineHeight: "16px",
                 textAlign: "center",

@@ -204,8 +204,10 @@ async def live_match(
     k = K_SCHEDULE[q_index - 1]
     # Over-fetch generously so we still hit `k + wildcard` after
     # filtering out household-name tools (label `all_time_best`).
-    # Worst case ~30% of the over-fetch is filtered; +12 buffer is plenty.
-    overfetch_limit = k + 12
+    # Household names cluster at the TOP of hybrid scores (they're the
+    # most-embedded, best-matched tools), so the filter eats more than
+    # the global ~30% rate. +30 buffer keeps count_kept ≈ K.
+    overfetch_limit = k + 30
 
     degraded = False
     pairs: list[tuple[dict[str, Any], float]] = []

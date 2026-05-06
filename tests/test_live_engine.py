@@ -153,8 +153,8 @@ async def test_live_match_uses_alpha_and_k_for_step(
     )
 
     assert captured["alpha"] == 0.5
-    # K_SCHEDULE[1]=15 + 12 over-fetch buffer (covers all_time_best filtering)
-    assert captured["limit"] == 27
+    # K_SCHEDULE[1]=15 + 30 over-fetch buffer (covers all_time_best filtering)
+    assert captured["limit"] == 45
     assert captured["filters"] == {"curation_status": "approved"}
     assert result.step == 2
     assert len(result.top) == 2

@@ -83,21 +83,49 @@ interface ToolGraphProps {
   mode?: "hero" | "narrow" | "grid" | "flow" | "score";
   gridSlots?: number;
   scale?: number;
+  /** When set, the graph renders these tools instead of MESH_TOOLS.
+   *  Reactively reconciled — tools added → fade in; removed → fade out
+   *  and pruned. Used by the live-narrowing onboarding flow to show
+   *  real catalog tools shrinking 40 → 20 → 15 → 10 → 6. */
+  tools?: MeshTool[];
 }
 
 // ============================================================
 // COMPONENT
 // ============================================================
+function makeNode(t: MeshTool, idx: number, spawnX = 0, spawnY = 0): GraphNode {
+  return {
+    ...t,
+    idx,
+    x: spawnX, y: spawnY, vx: 0, vy: 0, tx: spawnX, ty: spawnY,
+    seed: Math.random() * 1000,
+    bright: 0,        // start dim, fade in
+    visible: 0,       // start invisible, fade in
+    sizeBoost: 0,
+    hue: hueFor(t.id),
+    dendrites: Array.from(
+      { length: 5 + Math.floor(Math.random() * 3) },
+      (_, k) => ({
+        angle: (k / 6) * Math.PI * 2 + Math.random() * 0.6,
+        length: 0.7 + Math.random() * 0.6,
+        wobble: Math.random() * 6.28,
+      }),
+    ),
+  };
+}
+
 export function ToolGraph({
   progress = 0,
   highlightedTags = [],
   mode = "hero",
   gridSlots = 0,
   scale = 1,
+  tools,
 }: ToolGraphProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef<GraphNode[]>([]);
+  const activeIdsRef = useRef<Set<string>>(new Set());
   const pulsesRef = useRef<Pulse[]>([]);
   const mouseRef = useRef({ x: -9999, y: -9999, active: false });
   const stateRef = useRef({ progress, highlightedTags, mode, gridSlots, scale });
@@ -107,27 +135,58 @@ export function ToolGraph({
     stateRef.current = { progress, highlightedTags, mode, gridSlots, scale };
   }, [progress, highlightedTags, mode, gridSlots, scale]);
 
+  // Initial seed: if `tools` prop is provided, use it; otherwise the
+  // built-in MESH_TOOLS demo set (preserves the classic landing/onboarding
+  // visual for callers that don't pass real data).
   useEffect(() => {
-    nodesRef.current = MESH_TOOLS.map((t, i) => ({
-      ...t,
-      idx: i,
-      x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0,
-      seed: Math.random() * 1000,
-      bright: 1,
-      visible: 1,
-      sizeBoost: 0,
-      hue: hueFor(t.id),
-      dendrites: Array.from(
-        { length: 5 + Math.floor(Math.random() * 3) },
-        (_, k) => ({
-          angle: (k / 6) * Math.PI * 2 + Math.random() * 0.6,
-          length: 0.7 + Math.random() * 0.6,
-          wobble: Math.random() * 6.28,
-        }),
-      ),
-    }));
+    const seed = (tools && tools.length > 0) ? tools : MESH_TOOLS;
+    nodesRef.current = seed.map((t, i) => {
+      const n = makeNode(t, i);
+      n.bright = 1; n.visible = 1; // initial render fully visible
+      return n;
+    });
+    activeIdsRef.current = new Set(seed.map((t) => t.id));
     pulsesRef.current = [];
+    // Run only once on mount; further updates handled by the reconcile
+    // effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reconcile when `tools` prop changes. Existing nodes whose id is
+  // still in the new set keep their position/state. New ids get a
+  // freshly-spawned node (fades in). Removed ids stay in nodesRef but
+  // their target visibility goes to 0 (fades out, draw loop skips
+  // when visible<0.02).
+  useEffect(() => {
+    if (!tools) return;  // demo mode — no reconciliation
+    const newIds = new Set(tools.map((t) => t.id));
+    const existingById = new Map(nodesRef.current.map((n) => [n.id, n]));
+
+    // Update tags/name on existing nodes (props can change tags).
+    tools.forEach((t) => {
+      const n = existingById.get(t.id);
+      if (n) {
+        n.tags = t.tags;
+        n.name = t.name;
+      }
+    });
+
+    // Add nodes for new ids.
+    let nextIdx = nodesRef.current.length;
+    tools.forEach((t) => {
+      if (!existingById.has(t.id)) {
+        // Spawn near the center with slight random offset.
+        const spawnX = 0.5 * (canvasRef.current?.clientWidth || 600)
+          + (Math.random() - 0.5) * 80;
+        const spawnY = 0.5 * (canvasRef.current?.clientHeight || 400)
+          + (Math.random() - 0.5) * 80;
+        const node = makeNode(t, nextIdx++, spawnX, spawnY);
+        nodesRef.current.push(node);
+      }
+    });
+
+    activeIdsRef.current = newIds;
+  }, [tools]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -172,6 +231,10 @@ export function ToolGraph({
 
       const target = mode === "grid" ? Math.max(4, gridSlots || 5) : nodes.length;
       const cx = W / 2, cy = H / 2, t = now / 1000;
+      const activeIds = activeIdsRef.current;
+      // When `tools` prop is in use, we drive visibility from membership
+      // in activeIds; otherwise (demo mode) all nodes are active.
+      const usingActiveSet = activeIds.size > 0;
 
       const matchedSet = new Set<string>();
       if (highlightedTags.length) {
@@ -226,7 +289,15 @@ export function ToolGraph({
         const inPool = rank < target;
         const isMatch = matchedSet.has(n.id);
 
-        const visTarget = mode === "grid" && !inPool ? 0 : 1;
+        // Visibility target: when driven by `tools` prop, respect the
+        // active set. Removed ids fade out; new ids fade in. In demo
+        // mode, fall back to grid-pool gating.
+        const inActiveSet = usingActiveSet ? activeIds.has(n.id) : true;
+        const visTarget = !inActiveSet
+          ? 0
+          : mode === "grid" && !inPool
+            ? 0
+            : 1;
         n.visible = lerp(n.visible, visTarget, 1 - Math.pow(0.001, dt));
 
         let brightTarget: number;

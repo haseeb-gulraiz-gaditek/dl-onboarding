@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { MButton, MeshMark } from "@/components/Primitives";
-import { ToolGraph } from "@/components/ToolGraph";
+import { ToolGraph, MeshTool } from "@/components/ToolGraph";
 
 import { api, ApiError } from "@/lib/api";
 import { isAuthenticated, currentUser } from "@/lib/auth";
@@ -26,7 +26,24 @@ import type {
   LiveQuestionsResponse,
   LiveStepResponse,
   LiveStepTool,
+  ToolsBrowseResponse,
+  ToolCardWithFlags,
 } from "@/lib/api-types";
+
+
+// Convert API tool shapes to the ToolGraph's MeshTool shape.
+function toMeshTool(t: { slug: string; name: string; category?: string | null; labels?: string[]; layer?: string | null; tagline?: string | null }): MeshTool {
+  const tags = [
+    ...(t.category ? [t.category] : []),
+    ...(t.labels || []),
+    ...(t.layer ? [t.layer] : []),
+  ];
+  return {
+    id: t.slug,
+    name: t.name || t.slug,
+    tags: tags.slice(0, 6),
+  };
+}
 
 
 // =============================================================================
@@ -96,6 +113,9 @@ function LiveTapLoop() {
 
   const [latest, setLatest] = useState<LiveStepResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Initial pool of ~40 real tools shown on the graph BEFORE Q1.
+  // After each step, this is replaced with the live-step's top + wildcard.
+  const [graphTools, setGraphTools] = useState<MeshTool[]>([]);
 
   // Per-step answer state.
   const [q1Answer, setQ1Answer] = useState({ job_title: "", level: "", industry: "" });
@@ -104,6 +124,24 @@ function LiveTapLoop() {
   const [q3Selected, setQ3Selected] = useState("");
   const [q3Options, setQ3Options] = useState<LiveOption[] | null>(null);
   const [q4Selected, setQ4Selected] = useState("");
+
+  // Fetch initial 40-ish tools from the catalog so the graph shows
+  // real candidates before Q1 lands.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await api.get<ToolsBrowseResponse>(
+          "/api/tools?limit=40",
+        );
+        if (cancelled) return;
+        setGraphTools(r.tools.map(toMeshTool));
+      } catch (e) {
+        console.warn("[live] initial tools fetch failed", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Fetch the schema once.
   useEffect(() => {
@@ -176,11 +214,16 @@ function LiveTapLoop() {
         { q_index: step, answer_value: value },
       );
       if (r.degraded) {
-        // Dev signal only — Weaviate hybrid empty, fell back to Mongo-
-        // cosine. Not user-facing.
         console.info("[live] degraded ranking (Weaviate unavailable)");
       }
       setLatest(r);
+      // Update graph to show the actual narrowed tool list (top + optional
+      // wildcard). The ToolGraph component reconciles by id — kept tools
+      // hold their on-screen position; dropped ones fade out; new ones
+      // fade in.
+      const next: MeshTool[] = r.top.map(toMeshTool);
+      if (r.wildcard) next.push(toMeshTool(r.wildcard));
+      setGraphTools(next);
       if (step < 4) {
         setStep(((step + 1) as 1 | 2 | 3 | 4));
       } else {
@@ -219,8 +262,9 @@ function LiveTapLoop() {
             progress={progress}
             highlightedTags={accumulatedTags}
             mode="score"
-            gridSlots={slotCount}
+            gridSlots={Math.min(slotCount, graphTools.length || slotCount)}
             scale={1.4}
+            tools={graphTools.length > 0 ? graphTools : undefined}
           />
         </div>
         <div className="onb-graph-meta mono">
@@ -228,23 +272,28 @@ function LiveTapLoop() {
             <span className="onb-graph-dot" />
             <span>
               profile · {done
-                ? "matches ready"
+                ? `${graphTools.length} matches ready`
                 : busy
                   ? "matching…"
                   : !latest
-                    ? `~${slotCount} candidates · answer Q1 to narrow`
-                    : `narrowed to ${slotCount}`}
+                    ? `${graphTools.length || "—"} candidates · answer Q1 to narrow`
+                    : `narrowed to ${graphTools.length}`}
             </span>
           </div>
           <div className="onb-graph-tags">
-            {accumulatedTags.slice(0, 8).map((t) => (
-              <span key={t} className="onb-graph-tag">
-                {t}
+            {/* Show top tool names from the latest narrowing as chips
+                so the user can read what the graph is actually showing. */}
+            {(latest?.top
+              ? latest.top.map((t) => ({ id: t.slug, name: t.name || t.slug }))
+              : graphTools.map((t) => ({ id: t.id, name: t.name }))
+            ).slice(0, 8).map((tt) => (
+              <span key={tt.id} className="onb-graph-tag">
+                {tt.name}
               </span>
             ))}
-            {!latest && !busy && (
+            {!latest && !busy && graphTools.length === 0 && (
               <span className="onb-graph-tag" style={{ opacity: 0.5 }}>
-                answer Q{step} to start
+                loading catalog…
               </span>
             )}
           </div>

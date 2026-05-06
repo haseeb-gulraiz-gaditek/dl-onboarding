@@ -202,7 +202,10 @@ async def live_match(
 
     alpha = ALPHA_SCHEDULE[q_index - 1]
     k = K_SCHEDULE[q_index - 1]
-    overfetch_limit = k + 1  # +1 for wildcard slot
+    # Over-fetch generously so we still hit `k + wildcard` after
+    # filtering out household-name tools (label `all_time_best`).
+    # Worst case ~30% of the over-fetch is filtered; +12 buffer is plenty.
+    overfetch_limit = k + 12
 
     degraded = False
     pairs: list[tuple[dict[str, Any], float]] = []
@@ -248,6 +251,13 @@ async def live_match(
             continue
         tool = tools_by_slug.get(slug)
         if tool is None:
+            continue
+        # Filter out household-name tools — `all_time_best` is the
+        # catalog label for "everyone-already-knows-this." The live
+        # flow's job is to surface lesser-known fits, not re-recommend
+        # ChatGPT / Notion / Slack to people who already use them.
+        labels = tool.get("labels") or []
+        if "all_time_best" in labels:
             continue
         enriched.append((tool, score))
 

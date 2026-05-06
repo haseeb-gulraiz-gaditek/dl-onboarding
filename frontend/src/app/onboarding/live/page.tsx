@@ -73,8 +73,12 @@ export default function LiveOnboardingPage() {
 
 
 // =============================================================================
-// Constants — UI shrink schedule (mirrors backend K_SCHEDULE)
+// Constants — UI shrink schedule
 // =============================================================================
+// Before Q1 the graph starts wide (~40 placeholder nodes — "the whole
+// catalog you might use"). After each tap it narrows: 20 → 15 → 10 → 6
+// (mirrors the backend's K_SCHEDULE for everything from Q1 onward).
+const INITIAL_SLOTS = 40;
 const SLOT_BY_STEP: Record<number, number> = { 1: 20, 2: 15, 3: 10, 4: 6 };
 
 
@@ -171,6 +175,11 @@ function LiveTapLoop() {
         "/api/recommendations/live-step",
         { q_index: step, answer_value: value },
       );
+      if (r.degraded) {
+        // Dev signal only — Weaviate hybrid empty, fell back to Mongo-
+        // cosine. Not user-facing.
+        console.info("[live] degraded ranking (Weaviate unavailable)");
+      }
       setLatest(r);
       if (step < 4) {
         setStep(((step + 1) as 1 | 2 | 3 | 4));
@@ -189,8 +198,16 @@ function LiveTapLoop() {
     }
   };
 
-  const slotCount = done ? 6 : SLOT_BY_STEP[step];
-  const progress = done ? 1 : 0.3 + ((step - 1) / 4) * 0.7;
+  // Before any answer lands → INITIAL_SLOTS. After step N submits,
+  // `latest` is set and we shrink to the budget for the step the user
+  // is now ON. Use SLOT_BY_STEP[step-1] for the just-completed step
+  // because `step` is incremented before this re-renders.
+  const slotCount = done
+    ? 6
+    : !latest
+      ? INITIAL_SLOTS
+      : SLOT_BY_STEP[step];
+  const progress = done ? 1 : !latest ? 0.2 : 0.3 + ((step - 1) / 4) * 0.7;
   const currentQuestion = questions?.find((qq) => qq.q_index === step);
 
   return (
@@ -214,7 +231,9 @@ function LiveTapLoop() {
                 ? "matches ready"
                 : busy
                   ? "matching…"
-                  : `narrowing to ${slotCount}`}
+                  : !latest
+                    ? `~${slotCount} candidates · answer Q1 to narrow`
+                    : `narrowed to ${slotCount}`}
             </span>
           </div>
           <div className="onb-graph-tags">
@@ -512,12 +531,6 @@ function LiveResultPanel({ latest }: { latest: LiveStepResponse }) {
         Built from your stack, your task shape, and the friction you flagged.
         We&apos;ll keep refining as your profile sharpens.
       </p>
-      {latest.degraded && (
-        <p className="mono" style={{ color: "var(--warn)", marginTop: 8, fontSize: 12 }}>
-          (using fallback ranking — search index unavailable)
-        </p>
-      )}
-
       <div className={`onb-result-grid stage-${stage}`}>
         {tools.map((t, i) => (
           <LiveResultCard key={t.slug} tool={t} delay={i * 120} />

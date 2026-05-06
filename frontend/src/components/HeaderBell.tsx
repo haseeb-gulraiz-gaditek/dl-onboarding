@@ -3,7 +3,7 @@
 // Mesh — global notification bell + banner.
 // Per spec-delta frontend-secondary F-FE2-1.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { api } from "@/lib/api";
@@ -62,6 +62,7 @@ export function HeaderBell() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [open, setOpen] = useState(false);
   const [adminFlag, setAdminFlag] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) return;
@@ -70,6 +71,16 @@ export function HeaderBell() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      const w = wrapRef.current;
+      if (w && !w.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
 
   const load = async () => {
     try {
@@ -173,7 +184,15 @@ export function HeaderBell() {
         </div>
       )}
 
-      <div style={{ position: "relative", display: "inline-block" }}>
+      <div
+        ref={wrapRef}
+        style={{
+          position: "fixed",
+          top: 16,
+          right: 16,
+          zIndex: 60,
+        }}
+      >
         <button
           onClick={() => {
             const next = !open;
@@ -235,17 +254,17 @@ export function HeaderBell() {
         {open && (
           <div
             style={{
-              position: "absolute",
-              top: "calc(100% + 8px)",
-              right: 0,
-              width: 360,
-              maxHeight: "70vh",
+              position: "fixed",
+              top: 60,
+              right: 16,
+              width: "min(360px, calc(100vw - 32px))",
+              maxHeight: "min(70vh, 560px)",
               overflowY: "auto",
               background: "var(--bg-1)",
               border: "1px solid var(--line-0)",
               borderRadius: "var(--r-md)",
               boxShadow: "var(--shadow-card)",
-              zIndex: 50,
+              zIndex: 70,
             }}
           >
             <div

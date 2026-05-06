@@ -176,24 +176,27 @@ export default function HomePage() {
 
   // User home: existing 3-column shell.
   return (
-    <div className="home-root">
-      <HomeLeftRail
-        user={user}
-        stack={stack}
-        unread={unread}
-        communityCount={communities.length}
-        admin={admin}
-        onLogout={() => logout()}
-      />
-      <HomeCenter
-        user={user}
-        unread={unread}
-        notes={notes}
-        recs={recs}
-        communities={communities}
-      />
-      <HomeRightRail tags={profileTags} />
-    </div>
+    <>
+      <HeaderBell />
+      <div className="home-root">
+        <HomeLeftRail
+          user={user}
+          stack={stack}
+          unread={unread}
+          communityCount={communities.length}
+          admin={admin}
+          onLogout={() => logout()}
+        />
+        <HomeCenter
+          user={user}
+          unread={unread}
+          notes={notes}
+          recs={recs}
+          communities={communities}
+        />
+        <HomeRightRail tags={profileTags} />
+      </div>
+    </>
   );
 }
 
@@ -228,7 +231,6 @@ function HomeLeftRail({
           <MeshMark size={20} />
           <span>Mesh</span>
         </Link>
-        <HeaderBell />
       </div>
       <nav className="home-nav">
         <button className="home-nav-item" onClick={() => scrollTo("home-top")}>

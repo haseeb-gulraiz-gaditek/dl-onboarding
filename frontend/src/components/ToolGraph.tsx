@@ -252,6 +252,10 @@ export function ToolGraph({
           let s = 0;
           n.tags.forEach((tg) => { if (tagSet.has(tg)) s += 1; });
           s += (1 / (n.idx + 2)) * 0.01;
+          // When the caller supplies an explicit `tools` set
+          // (live-onboarding flow), heavily reward those nodes so
+          // primarySet is exactly them — no tag-overlap shenanigans.
+          if (usingActiveSet && activeIds.has(n.id)) s += 1000;
           scoreMap!.set(n.id, s);
         });
         const N = Math.max(4, gridSlots || 10);

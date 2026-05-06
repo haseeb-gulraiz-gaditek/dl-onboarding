@@ -3,12 +3,12 @@
 // Mesh — User home / "your stack"
 // Per spec-delta frontend-core F-FE-7.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { MeshMark } from "@/components/Primitives";
-import { ToolGraph } from "@/components/ToolGraph";
+import { ToolGraph, MeshTool } from "@/components/ToolGraph";
 import { HeaderBell } from "@/components/HeaderBell";
 
 import { api, ApiError } from "@/lib/api";
@@ -194,7 +194,7 @@ export default function HomePage() {
           recs={recs}
           communities={communities}
         />
-        <HomeRightRail tags={profileTags} />
+        <HomeRightRail tags={profileTags} recs={recs} />
       </div>
     </>
   );
@@ -383,14 +383,14 @@ function HomeCenter({
         </div>
       </section>
 
-      {fresh.length > 0 && (
-        <section className="home-section">
-          <div className="home-section-head">
-            <h2 className="home-section-title">Fresh for you</h2>
-            {recs?.from_cache && (
-              <span className="mono home-section-meta">cached · refresh in &lt;7d</span>
-            )}
-          </div>
+      <section className="home-section">
+        <div className="home-section-head">
+          <h2 className="home-section-title">Fresh for you</h2>
+          {recs?.from_cache && (
+            <span className="mono home-section-meta">cached · refresh in &lt;7d</span>
+          )}
+        </div>
+        {fresh.length > 0 ? (
           <div className="home-fresh-strip">
             {fresh.map((p, i) => (
               <FreshCard
@@ -401,8 +401,31 @@ function HomeCenter({
               />
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div
+            className="mono"
+            style={{
+              color: "var(--ink-3)",
+              padding: "12px 0",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <span>no matches yet — answer onboarding to populate</span>
+            <Link
+              href="/onboarding"
+              style={{
+                color: "var(--accent)",
+                textDecoration: "underline",
+                fontSize: 13,
+              }}
+            >
+              → start onboarding
+            </Link>
+          </div>
+        )}
+      </section>
 
       <section className="home-section" id="home-communities">
         <div className="home-section-head">
@@ -552,21 +575,54 @@ function FreshCard({
 // graph uses). Empty array = no answers yet → graph idles.
 // (Activity feed stayed removed — no cross-user stream backend.)
 // =============================================================================
-function HomeRightRail({ tags }: { tags: string[] }) {
+function HomeRightRail({
+  tags,
+  recs,
+}: {
+  tags: string[];
+  recs: RecommendationsResponse | null;
+}) {
+  // Build a real tool list for the graph from the cached recs
+  // (which the live flow writes after each Q). Falls back to the
+  // synthetic tag highlight if recs are empty (e.g. classic flow user
+  // pre-recommendations).
+  const recTools: MeshTool[] = useMemo(() => {
+    if (!recs) return [];
+    return [...recs.recommendations, ...recs.launches]
+      .slice(0, 12)
+      .map((p) => ({
+        id: p.tool.slug,
+        name: p.tool.name || p.tool.slug,
+        tags: [p.tool.category, ...(p.tool.labels || [])].slice(0, 6),
+      }));
+  }, [recs]);
+
   return (
     <aside className="home-rail home-rail-right">
-      <div className="home-rail-heading mono">Your profile graph</div>
+      <div className="home-rail-heading mono">Your matches</div>
       <div className="home-mini-graph">
         <ToolGraph
-          progress={tags.length > 0 ? 1 : 0.4}
+          progress={recTools.length > 0 ? 1 : 0.4}
           highlightedTags={tags}
           mode="score"
-          gridSlots={Math.max(4, Math.min(8, tags.length || 5))}
+          gridSlots={recTools.length || Math.max(4, Math.min(8, tags.length || 5))}
           scale={0.85}
+          tools={recTools.length > 0 ? recTools : undefined}
         />
       </div>
       <div className="home-rail-tags">
-        {tags.length === 0 ? (
+        {recTools.length > 0 ? (
+          recTools.slice(0, 10).map((t) => (
+            <Link
+              key={t.id}
+              href={`/p/${t.id}`}
+              className="onb-graph-tag"
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              {t.name}
+            </Link>
+          ))
+        ) : tags.length === 0 ? (
           <span className="mono" style={{ color: "var(--ink-3)", fontSize: 12 }}>
             answer onboarding to populate
           </span>

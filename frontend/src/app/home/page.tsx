@@ -771,6 +771,26 @@ function FounderHome({
           </div>
         </header>
 
+        {/* Aggregate engagement across all approved launches */}
+        {approved > 0 && (
+          <section className="home-section">
+            <div className="home-section-head">
+              <h2 className="home-section-title">Reach so far</h2>
+            </div>
+            <FounderReachSummary dashboard={dashboard} />
+          </section>
+        )}
+
+        {/* Pipeline status: only when there's a pending launch */}
+        {pending > 0 && (
+          <section className="home-section">
+            <div className="home-section-head">
+              <h2 className="home-section-title">What happens next</h2>
+            </div>
+            <PipelineTimeline />
+          </section>
+        )}
+
         <section className="home-section">
           <div className="home-section-head">
             <h2 className="home-section-title">Your launches</h2>
@@ -779,12 +799,7 @@ function FounderHome({
             </Link>
           </div>
           {dashboard.length === 0 ? (
-            <div className="mono" style={{ color: "var(--ink-3)", padding: 24 }}>
-              you haven&apos;t submitted a launch yet —{" "}
-              <Link href="/founders/launch" style={{ textDecoration: "underline" }}>
-                start one
-              </Link>
-            </div>
+            <FounderEmptyState />
           ) : (
             <div className="home-coms">
               {dashboard.map((l) => (
@@ -817,6 +832,167 @@ function FounderHome({
     </div>
   );
 }
+
+function FounderReachSummary({
+  dashboard,
+}: {
+  dashboard: DashboardLaunchCard[];
+}) {
+  const live = dashboard.filter((l) => l.verification_status === "approved");
+  const matched = live.reduce((s, l) => s + (l.matched_count || 0), 0);
+  const tellMe = live.reduce((s, l) => s + (l.tell_me_more_count || 0), 0);
+  const skip = live.reduce((s, l) => s + (l.skip_count || 0), 0);
+  const clicks = live.reduce((s, l) => s + (l.total_clicks || 0), 0);
+  const stats: Array<{ label: string; value: number; tone?: string }> = [
+    { label: "users matched", value: matched },
+    { label: "tell-me-more", value: tellMe, tone: "var(--accent)" },
+    { label: "skip", value: skip, tone: "var(--ink-3)" },
+    { label: "total clicks", value: clicks },
+  ];
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+        gap: 12,
+      }}
+    >
+      {stats.map((s) => (
+        <div
+          key={s.label}
+          className="m-card"
+          style={{ padding: 16, textAlign: "center" }}
+        >
+          <div
+            className="h-display"
+            style={{ fontSize: 32, color: s.tone || "var(--ink-0)" }}
+          >
+            {s.value.toLocaleString()}
+          </div>
+          <div
+            className="mono"
+            style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4 }}
+          >
+            {s.label}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+function PipelineTimeline() {
+  const steps = [
+    { label: "Submitted", state: "done", desc: "your launch is in the queue" },
+    { label: "Awaiting verification", state: "active", desc: "Mesh staff reviews URL + ICP, ~24h SLA" },
+    { label: "Approved", state: "pending", desc: "tool row created, embedded, indexed" },
+    { label: "Fanned out", state: "pending", desc: "auto-posted to your target communities" },
+    { label: "Concierge scan", state: "pending", desc: "top-5% matching users get a nudge" },
+    { label: "Tracking", state: "pending", desc: "engagement counts surface in analytics" },
+  ];
+  return (
+    <ol style={{ display: "grid", gap: 10, listStyle: "none", padding: 0 }}>
+      {steps.map((s, i) => {
+        const dotColor =
+          s.state === "done"
+            ? "var(--good)"
+            : s.state === "active"
+              ? "var(--accent)"
+              : "var(--ink-3)";
+        const titleColor =
+          s.state === "pending" ? "var(--ink-2)" : "var(--ink-0)";
+        return (
+          <li
+            key={i}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "20px 1fr",
+              gap: 12,
+              alignItems: "flex-start",
+              padding: "8px 12px",
+              borderRadius: "var(--r-sm)",
+              border: "1px solid var(--line-0)",
+              background:
+                s.state === "active" ? "var(--bg-2)" : "transparent",
+            }}
+          >
+            <div
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                background: dotColor,
+                marginTop: 4,
+              }}
+            />
+            <div>
+              <div className="h-card" style={{ fontSize: 13, color: titleColor }}>
+                {s.label}
+                {s.state === "active" && (
+                  <span
+                    className="mono"
+                    style={{
+                      marginLeft: 8,
+                      color: "var(--accent)",
+                      fontSize: 10,
+                    }}
+                  >
+                    in progress
+                  </span>
+                )}
+              </div>
+              <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>
+                {s.desc}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+
+function FounderEmptyState() {
+  const checklist = [
+    "A live product URL (we'll embed your problem statement against ICPs)",
+    "A 1-line problem your product solves",
+    "A 1–2 sentence ICP description (who you're for)",
+    "1–6 target communities your users live in",
+  ];
+  return (
+    <div className="m-card" style={{ padding: 24 }}>
+      <div className="h-card" style={{ fontSize: 16, marginBottom: 8 }}>
+        Ready to ship your first launch?
+      </div>
+      <p className="body" style={{ color: "var(--ink-2)", marginBottom: 16 }}>
+        Mesh launches reach the top 5% of users by ICP match — verified by
+        humans, never CPM. Here&apos;s what you&apos;ll need:
+      </p>
+      <ul style={{ paddingLeft: 18, margin: 0, display: "grid", gap: 6 }}>
+        {checklist.map((c, i) => (
+          <li key={i} className="body" style={{ fontSize: 13, color: "var(--ink-1)" }}>
+            {c}
+          </li>
+        ))}
+      </ul>
+      <Link
+        href="/founders/launch"
+        className="mono"
+        style={{
+          display: "inline-block",
+          marginTop: 16,
+          color: "var(--accent)",
+          textDecoration: "underline",
+        }}
+      >
+        + start a launch →
+      </Link>
+    </div>
+  );
+}
+
 
 function FounderLaunchRow({ launch }: { launch: DashboardLaunchCard }) {
   const status = launch.verification_status;

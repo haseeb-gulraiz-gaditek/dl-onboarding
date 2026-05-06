@@ -576,3 +576,59 @@ learnings:
       view. Pattern: if a screen serves multiple roles, branch
       at the top, not at every section.
     category: architecture
+  - date: 2026-05-06
+    cycle: "frontend-secondary"
+    insight: |
+      A "global" overlay component (notification bell, toast
+      stack, command palette) should self-position with
+      position:fixed in its own wrapper — never rely on the
+      mounting context for placement. The first cut put
+      <HeaderBell /> inside each page's flex header; on /home
+      that placed it inside a narrow left sidebar where the
+      dropdown got visually clipped. Pattern: an overlay's
+      position is part of its contract. The page mounts it once
+      anywhere in the tree; the component owns where it appears.
+    category: architecture
+  - date: 2026-05-06
+    cycle: "frontend-secondary"
+    insight: |
+      Domain-jargon labels lose users even when the underlying
+      flow is fine. "Concierge" tested poorly with both roles —
+      users had no concept of a personal AI agent, founders
+      thought it was customer-support copy. Renamed to "Inbox"
+      (kept the route /concierge for URL stability + backend
+      kinds for schema stability). Pattern: split the
+      product-internal name (used in code, schemas, telemetry)
+      from the user-visible label, and let the label change
+      independently when feedback says it's confusing.
+    category: process
+  - date: 2026-05-06
+    cycle: "frontend-secondary"
+    insight: |
+      External-service init probes are silent latency tax. The
+      Weaviate v4 client's connect() does a gRPC health check
+      with a default ~30s timeout. On a machine where Weaviate
+      Cloud is unreachable, the FIRST POST /admin/launches/{id}
+      /approve hung 30s before the failure was cached and
+      subsequent requests short-circuited. Fix: pass an explicit
+      Timeout(init=2) so the probe fails fast. Pattern: any
+      lazy client to an external dependency should have its init
+      timeout explicitly set; the library default is "for a
+      healthy network", not "for a sandbox / dev box / firewalled
+      CI". Also applies to Redis, OpenAI, Mongo.
+    category: performance
+  - date: 2026-05-06
+    cycle: "frontend-secondary"
+    insight: |
+      A nav item that scrolls to an empty section is worse than
+      no nav item. /home left rail's "Communities" used to
+      scroll to "Your communities" — but for a brand new user
+      that section said "you haven't joined any rooms yet" with
+      no further action. Users couldn't find a way to discover
+      OR join communities without typing /c/{slug} into the URL
+      bar. Built /communities browse page; rewired the rail
+      item; added a "→ browse communities" link inside the
+      empty state. Pattern: every entry point from the nav
+      must lead to either content (filled state) or a clear
+      next action (empty state with CTA).
+    category: process

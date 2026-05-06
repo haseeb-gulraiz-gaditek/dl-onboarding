@@ -8,13 +8,16 @@ installed_standard_version: "1.5"
 installed_at: "2026-04-30T20:36:01+05:00"
 tracker_preference: "local"  # "local" | "linear" | "github"
 current_cycle:
-  slug: frontend-secondary
-  phase: proposal            # proposal | implement | complete
-  started_at: "2026-05-06T22:00:00+05:00"
-  tracker_ref: "backlog:14"
-  base_branch: main
-  branch_name: frontend-secondary
+  slug: null
+  phase: null            # proposal | implement | complete
+  started_at: null
+  tracker_ref: null
+  base_branch: null
+  branch_name: null
 history:
+  - slug: frontend-secondary
+    completed: "2026-05-06"
+    summary: "Wired the remaining design surfaces against real APIs: /c/[slug] community room (cycle #7 — hero, feed, vote, compose, sister rooms, filter tabs, V1 hardcoded pulse/axes/readers), /concierge inbox (cycle #12 — three columns, single-message render, tell_me_more/skip composer), /tools/{mine,explore,new} tab pages (cycle #10 — mine has status flip + unsave; explore has filters + Save; new has joined-communities-default + ?all toggle), /founders/launches/[id]/analytics (cycle #11 — counts + bars + donut), /admin/launches and /admin/catalog (cycle #3 — approve + progressive-disclosure reject), /communities browse page (NEW for discoverability — list + filter + Join/Leave for users, read-only Open→ for founders). Global infrastructure: HeaderBell self-positions as fixed top-right with viewport-clamped dropdown + click-outside close (mounts on every authed route, never on /login or /signup); admin probe via GET /admin/launches?status=pending caches in localStorage[\"mesh.isAdmin\"]; logout clears it. UX iteration in-cycle: bell glyph swapped to a bell SVG + \"Inbox\" label after the original ◌ glyph collided with the Communities nav glyph; \"Concierge\" relabeled \"Inbox\" everywhere user-visible (route + backend kinds unchanged); /home left-rail \"Communities\" rewired from scroll-to-section to /communities; empty state and joined community rows made clickable. Backend cleanups discovered while approving: derive_tool_slug now strips noise subdomains (www/app/my/go/try/get/dashboard/admin/portal/beta/staging) and the TLD before normalization, and friendly name title-cases every slug segment (so app.contentplanner.site → contentplanner / Contentplanner instead of app-contentplanner-site / App); Weaviate client's init timeout capped to 2s so the first /admin/launches/{id}/approve on a Weaviate-less machine returns in <3s instead of ~30s. Four new learnings: overlay components must self-position with fixed wrapper; product-internal names ≠ user-visible labels; external-client init probes need explicit short timeouts; nav items must lead to content or a CTA, never an empty section."
   - slug: frontend-core
     completed: "2026-05-06"
     summary: "Two-process Mesh: app/ (FastAPI, unchanged) + new frontend/ (Next.js 14 / React 18 / TS / pure-CSS OKLCH tokens). Added 2 small backend endpoints (GET /api/me/communities + GET /api/me/profile-summary; 10 tests; full suite 286 green) and CORS middleware. Wired 7 routes against real APIs: / (landing), /signup (role toggle), /login, /onboarding (tap-question loop, user role only), /home (role-aware — user gets stack+nudges+fresh+communities+profile graph; founder gets launch dashboard from cycle #11), /founders/launch (5-step form + community picker fed by GET /api/communities, per-step gating, inline URL validation), /p/[slug]. Multiple audit passes addressed user feedback: removed hardcoded fake elements (activity feed, hardcoded profile-graph tags, hardcoded community picker), made every tool-slug reference clickable to /p/{slug}, fixed pointer-events bug on community chips, replaced /founders/launch's silent slug-mismatch with raw-answer rendering on stack panel, split user vs founder /home, fixed dead nav, split /signup + /login pages with role toggle. Four new learnings: design templates bring mock data, pointer-events:none kills descendant clicks silently, per-step form validation beats end-of-flow surprise, role-aware surfaces beat hidden sections."

@@ -26,7 +26,7 @@ from app.launches.approve import (
 )
 
 
-POLL_INTERVAL_SECONDS = 30
+POLL_INTERVAL_SECONDS = 2
 REVIEWED_BY = "auto-approver@mesh.local"
 
 

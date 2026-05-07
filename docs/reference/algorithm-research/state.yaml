@@ -1,0 +1,88 @@
+started_at: 2026-04-29T00:00:00Z
+elapsed_seconds: 6850
+budget_seconds: 12250
+status: completed
+last_iter: 16
+completed_at: 2026-04-29T00:00:00Z
+termination_reason: "User requested halt after iter 16. Resumed run added 4 control/routing layers (iter 13-16) above the V1 trunk."
+final_recommendation: "V1 = Iter 2 → Iter 5 → Iter 12 (unchanged from initial synthesis). V1.5 adds iter 4/6/8/11/13. V2 adds iter 3/7/10/14/15/16 control loop. V3 adds iter 9 (causal uplift) + federated personalization (deferred unresearched)."
+advance_threshold: 7.0
+rubric:
+  match_depth: 0.5
+  noise_robustness: 0.3
+  composability: 0.2
+pipeline_so_far:
+  - "Iter 2: LLM intent extraction (advanced) — V1"
+  - "Iter 3: Contrastive intent head on frozen embeddings (advanced) — V2"
+  - "Iter 4: Cross-encoder rerank with reasoning trace (advanced) — V1.5 cost-fallback"
+  - "Iter 5: ColBERT per-field MaxSim retrieval w/ negative MaxSim exclusion (advanced) — V1"
+  - "Iter 6: KG embeddings (ComplEx/RotatE) on tool-capability-integration KG (advanced) — V1.5"
+  - "Iter 7: CompGCN tripartite heterograph; warm-start from iter 6 (advanced) — V2"
+  - "Iter 8: Agentic retrieval orchestrator (advanced; 8.45) — V1.5 slow path"
+  - "Iter 9: Causal uplift τ(u,t) (advanced; deferred) — V3"
+  - "Iter 10: Epinet/Thompson-sampling exploration (advanced) — V2"
+  - "Iter 11: BetaE/Query2Box neuro-symbolic operators (advanced) — V1.5 fast path"
+  - "Iter 12: In-context Sonnet long-context listwise rerank (advanced; 8.10) — V1 trunk"
+  - "Iter 13: GraphRAG community retrieval (advanced; 7.35) — V1.5 slow-path complement"
+  - "Iter 14: Conformal prediction abstention (advanced; 7.50) — V2 honest-concierge primitive"
+  - "Iter 15: Mixture-of-retrievers learned routing (advanced; 7.45) — V2 routing layer"
+  - "Iter 16: Contextual bandit (EXP4/Thompson) online retrieval routing (advanced; 7.60) — V2/V3 closed loop"
+unresearched_candidates:
+  - federated/on-device per-user personalization with shared prior (next direction at termination)
+  - agent distillation (small specialist from iter-8 traces)
+  - multi-task instruction-tuned retriever
+history:
+  - iter: 1
+    composite: 5.85
+    verdict: discard
+  - iter: 2
+    composite: 7.55
+    verdict: advance
+  - iter: 3
+    composite: 7.30
+    verdict: advance
+  - iter: 4
+    composite: 7.60
+    verdict: advance
+  - iter: 5
+    composite: 7.25
+    verdict: advance
+  - iter: 6
+    composite: 7.75
+    verdict: advance
+  - iter: 7
+    composite: 7.75
+    verdict: advance
+  - iter: 8
+    composite: 8.45
+    verdict: advance
+  - iter: 9
+    composite: 7.35
+    verdict: "advance (deferred V3)"
+  - iter: 10
+    composite: 7.45
+    verdict: advance
+  - iter: 11
+    composite: 7.50
+    verdict: advance
+  - iter: 12
+    composite: 8.10
+    verdict: advance
+  - iter: 13
+    composite: 7.35
+    verdict: advance
+  - iter: 14
+    composite: 7.50
+    verdict: advance
+  - iter: 15
+    composite: 7.45
+    verdict: advance
+  - iter: 16
+    composite: 7.60
+    verdict: advance
+resume_instructions: |
+  To continue: set status: "running", bump budget_seconds, set next_direction to one of:
+    - federated/on-device personalization (most aligned with constitution)
+    - agent distillation
+    - multi-task instruction-tuned retriever
+  Then run /loop with the original procedure.

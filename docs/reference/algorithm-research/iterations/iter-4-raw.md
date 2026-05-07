@@ -1,0 +1,41 @@
+# Iter 4 — Cross-Encoder Rerank Stage (with Structured Intent Context)
+
+_Generated 2026-04-29. Pipeline position: top-50 from iter-3 contrastive bi-encoder → CE rerank with `(intent_JSON, tool_desc)` → top-5 to concierge._
+
+## 1. Per-paper takeaways
+
+1. **Passage Re-ranking with BERT — Nogueira & Cho (2019).** The original cross-encoder rerank: concatenate `[CLS] query [SEP] doc [SEP]`, fine-tune BERT to predict relevance, beat BM25 by 27% on MS MARCO. **For Mesh:** establishes that joint-attention scoring of query+doc unlocks signal a bi-encoder structurally cannot see — directly addresses our compositional gap.
+
+2. **Document Ranking with a Pretrained Seq2Seq Model (monoT5) — Nogueira, Jiang, Lin (2020).** Frames relevance as next-token generation ("true"/"false"); generative head transfers better in low-data regimes than encoder-only classification. **For Mesh:** a generative pointwise head can be conditioned on structured intent JSON without retraining a classifier — useful when our intent schema evolves.
+
+3. **bge-reranker-v2-m3 + layerwise variant — BAAI (2024).** Production-grade open CE: 0.6B params, multilingual, layerwise variant lets you exit at layer 8–40 for a quality/latency dial. **For Mesh:** plausible default reranker; layerwise exit is the lever to keep p95 latency under our concierge budget when reranking 50 candidates.
+
+4. **NV-RerankQA-Mistral-4B-v3 / Benchmarking Rerankers for RAG — Moreira et al. (NVIDIA, 2024).** Decoder-LLM-as-CE reranker; +14% accuracy over bge-reranker-v2-m3 on Q&A retrieval, with explicit ablations on size/loss/attention and a deployment-latency lens. **For Mesh:** evidence that a 4B Mistral-class CE meaningfully out-resolves a 0.6B encoder — relevant when our intent JSON is long and dense (frictions + capabilities + edges).
+
+5. **RankGPT — Sun et al. (EMNLP 2023).** First strong **listwise** LLM reranker: prompt the model with all candidates, get a permutation; uses sliding-window for long lists. Shows GPT-4 beats supervised CEs zero-shot. **For Mesh:** listwise lets the model do _comparative_ reasoning across tools (Notion-integrated vs not), which pointwise CEs cannot. But sliding window + position bias make it fragile at K=50.
+
+6. **RankLLaMA — Ma, Wang, Yang, Wei, Lin (2023).** Pointwise LLM reranker; LLaMA fine-tuned on MS MARCO; demonstrates LLM CEs handle long contexts holistically without chunking. **For Mesh:** validates pointwise-LLM as a viable middle ground — long structured intent + tool description fits cleanly without segmentation tricks.
+
+7. **RankZephyr — Pradeep, Sharifymoghaddam, Lin (2023).** Open-source 7B distilled from RankGPT-4 via permutation distillation with shuffled-window training; matches/beats GPT-4 zero-shot, robust to input-order perturbation. **For Mesh:** the practical "we want listwise but can't afford GPT-4 per query" answer; shuffled-window training is also our best defense against position bias when we feed 50 tools.
+
+8. **Rank1: Test-Time Compute for Reranking — Weller et al. (2025).** Reasoning-LLM-as-reranker: distills 600K CoT reasoning traces over MS MARCO; the reranker emits an explanation chain, then a score. SOTA on reasoning-heavy retrieval (BRIGHT) and explainable. **For Mesh:** directly relevant — concierge needs "why this tool" rationales, and our query is itself a reasoning artifact (frictions + counterfactual_gaps). Rank1's reasoning trace is the natural source for the concierge's explanation.
+
+9. **InsertRank — (2025).** Inject BM25 scores into the LLM listwise prompt as a structured signal; LLM learns to reason _over_ retriever scores rather than ignore them. **For Mesh:** the strongest existing precedent for feeding **structured non-text signals** (our iter-3 contrastive scores, paradigm flags, edge metadata) into a CE/LLM reranker prompt — a template we should copy.
+
+10. **A Thorough Comparison of CEs and LLMs for Reranking SPLADE — Déjean, Clinchant, Formal (2024).** Sober empirical study: on in-domain MS MARCO, CEs and LLM rerankers are statistically indistinguishable; LLMs win out-of-domain but at much higher cost. **For Mesh:** argues against jumping straight to a 7B LLM reranker — a fine-tuned 0.6B BGE CE may capture most of the gain on our distribution.
+
+## 2. Synthesis — fit, depth gained, gap remaining
+
+**Fit.** The CE rerank slots in cleanly: iter-3 produces 50 candidates with paradigm-fit scores; we serialize the intent object as `frictions: [...] | desired_capabilities: [...] | excluded_tools: [...] | workflow_edges: [(Notion → Linear, weekly, Tue 4pm), ...] | counterfactual_gaps: [...]` and concatenate with the tool description. A pointwise CE (bge-reranker-v2-m3 fine-tuned, or NV-Rerank-Mistral) scores each pair; top-5 advances to concierge. For listwise reasoning across the 50 (RankZephyr-style sliding window of size ~10) we add a second pass that produces a permutation plus rationale — Rank1-style.
+
+**Depth gained.** Cross-attention finally lets the model resolve **conjunctions** and **negations** that bi-encoder dot-product collapses: "must integrate with Notion AND not be Asana AND support weekly cadence" stops being a centroid and becomes per-token attention between intent fields and tool description sentences. Negation in `excluded_tools` is the cleanest win — bi-encoders famously embed "Asana" and "not Asana" near-identically; a CE reads the field name and respects it. Listwise rerankers add **comparative** reasoning: "this candidate dominates that one on edge-coverage."
+
+**Noise absorbed.** Iter-3 contrastive scores already collapse paradigm noise; CE rerank then absorbs lexical-vs-semantic mismatches and partial-feature overlaps. With Rank1-style reasoning traces, the CE also absorbs ambiguity in messy intent JSON (half-extracted frictions, low-confidence capabilities) by weighting fields the model deems reliable.
+
+**Gap that remains — be honest.** A CE on a flattened token sequence still treats `workflow_edges` as **bag-of-tokens**. The fact that "Notion → Linear" is a *directed edge* with a *cadence* and a *time-of-day* condition is not preserved by `[SEP]`-joined serialization; the model sees the tokens "Notion", "→", "Linear", "weekly", "Tuesday" but has no inductive bias that these form a typed relation. Multi-hop edge graphs (Notion → Linear → GitHub releases) collapse into adjacent tokens. Cross-attention is necessary but not sufficient for graph-structured constraints. Position-bias in listwise mode (RankZephyr, lost-in-the-middle) and the K-vs-latency-vs-quality tradeoff (Déjean 2024 says CE ≈ LLM in-domain, so don't overpay) are the second-order concerns.
+
+**Listwise vs pointwise for explainability.** Pointwise + Rank1-style reasoning trace is the better fit for Mesh's concierge: each top-5 tool gets its own rationale ("matches `friction: meetings overflow`, has `capability: async standups`, respects `excluded_tools: ¬Asana`"), which the concierge can render verbatim. Listwise is stronger for relative ordering but produces a global permutation rationale, harder to map onto a per-tool "why this one" UI. Recommend: **pointwise CE with reasoning trace as primary; listwise pass only as a tiebreaker for the top-10**.
+
+## 3. Suggested next direction
+
+**ColBERT-style multi-vector late interaction over typed intent fields.** Pick this over GNN/KG/agentic retrieval because it is the smallest delta from our current stack that addresses the actual residual gap: **token-level structure preservation without giving up the bi-encoder's recall-side efficiency or the CE's compositionality**. Encode each intent field (frictions, capabilities, excluded_tools, each workflow_edge) as its own vector; encode tool descriptions as token vectors; score with MaxSim per field then aggregate with learned per-field weights — including a *negative* MaxSim for `excluded_tools`. This gives us (a) explicit field-level matching that the concierge can introspect ("matched on `friction[2]` ↔ tool sentence 4"), (b) native handling of negation as a sign-flip, and (c) a clean handoff for iter-6 to encode `workflow_edges` as relation-typed vectors rather than flat strings — the entry point for graph-aware retrieval without committing to a full GNN yet. ColBERT also composes with our CE: late-interaction for top-50→top-15, CE+reasoning trace for top-15→top-5.

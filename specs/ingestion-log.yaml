@@ -119,3 +119,51 @@ entries:
         future_home: specs/gaps/ via /vkf/gaps
     files_modified:
       - specs/ingestion-log.yaml
+
+  - id: ING-002
+    timestamp: "2026-05-07T14:00:00+05:00"
+    source:
+      type: directory
+      path: "scratch/ (gitignored)"
+      format: markdown + yaml
+      note: |
+        Migration of all gitignored scratch knowledge into the proper
+        VKF buckets so the repo is the actual source of truth (no
+        orphan knowledge per CHECKLIST.md). No new content — this is
+        a placement-only ingestion.
+    extractions:
+      - target: docs/architecture/system-design.md
+        section: whole file
+        confidence: high
+        excerpt: "v0.1 system design lock — tech stack, data model, deploy targets, V1 scope"
+        action: moved
+        reason: architecture_knowledge_belongs_in_docs_architecture
+      - target: docs/ux/design-brief.md
+        section: whole file
+        confidence: high
+        excerpt: "UX language brief — tap-and-go flow, dual-pane shell, OKLCH tokens, ToolGraph"
+        action: moved
+        reason: ux_knowledge_belongs_in_docs_ux
+      - target: docs/reference/algorithm-research/
+        section: 16-iteration Karpathy-loop matching-algorithm research
+        confidence: high
+        excerpt: "SYNTHESIS.md final pipeline = Iter 2 → Iter 5 → Iter 12. Informed cycle #15 live-narrowing-onboarding."
+        action: moved
+        reason: research_reference_material
+      - target: docs/reference/early-thinking/
+        section: 7 pre-constitution brainstorm files (basic-idea, ideas v1-v4, persona-ideas v1-v2)
+        confidence: high
+        excerpt: "Load-bearing source for the constitution per ING-001. Preserved as historical context."
+        action: moved
+        reason: provenance_for_constitution
+      - target: (deleted)
+        section: scratch/Mesh.zip + scratch/mesh-app/ + scratch/mesh/
+        confidence: high
+        excerpt: "Next.js prototype that fed cycle #13 frontend-core."
+        action: deleted
+        reason: superseded_by_frontend/_implementation
+    files_modified:
+      - specs/ingestion-log.yaml
+      - CLAUDE.md (system_design.md path updated)
+      - docs/architecture/, docs/ux/, docs/reference/ (created)
+      - .gitignore (scratch/ entry kept; dir is now empty)

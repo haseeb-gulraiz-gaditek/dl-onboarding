@@ -152,12 +152,12 @@ Override these only if your repo deviates from the defaults.
 
 ## Tech Stack — Mesh
 
-Locked in `scratch/system_design.md` v0.1. This section is the source of truth for any future Claude Code session.
+Locked in `docs/architecture/system-design.md` v0.1. This section is the source of truth for any future Claude Code session.
 
 | Layer | Choice | Notes |
 |---|---|---|
 | Backend | **FastAPI (Python 3.11+)** | Single monolith app |
-| Database | **MongoDB** | Single DB; monolithic schema in `system_design.md` §"Data model" |
+| Database | **MongoDB** | Single DB; monolithic schema in `docs/architecture/system-design.md` §"Data model" |
 | Vector DB | **Weaviate** | Separate service (not co-located in Mongo); used for profile↔tool matching |
 | Frontend | **React** | Mobile-responsive SPA; Tailwind + shadcn-style primitives; TanStack Query for server state, light Zustand for ephemeral UI |
 | Auth | **Custom Python** | Email + password, bcrypt, JWT (HS256, 7-day) + httpOnly refresh cookie; rate limits on signup/login |
@@ -167,7 +167,7 @@ Locked in `scratch/system_design.md` v0.1. This section is the source of truth f
 | Deploy target | **TBD** | Pending decision — leading candidates: Fly.io (Python+Mongo friendly) or Railway. Not Vercel (FastAPI fit is awkward). |
 | Dev ports | **8000 (API), 5173 (Vite), 6379 (Redis), 27017 (Mongo), 8080 (Weaviate)** | Reserve when running locally |
 
-**Out of scope for V1** (per `system_design.md`): email/push notifications (in-app only, except founder verification email), free-form chat concierge (V1.5+), AI-agent catalog crawling, JS pixel for founder analytics, community-elected mods, graph-DB recommendation layer.
+**Out of scope for V1** (per `docs/architecture/system-design.md`): email/push notifications (in-app only, except founder verification email), free-form chat concierge (V1.5+), AI-agent catalog crawling, JS pixel for founder analytics, community-elected mods, graph-DB recommendation layer.
 
 ---
 

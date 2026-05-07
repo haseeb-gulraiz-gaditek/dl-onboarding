@@ -393,18 +393,39 @@ async def similarity_search(
                 identifier = (
                     "slug" if collection_name == "tools_seed" else "user_id"
                 )
-                identifiers = [
+                str_identifiers = [
                     obj.properties.get(identifier) for obj in resp.objects
                 ]
-                identifiers = [i for i in identifiers if i is not None]
-                if not identifiers:
+                str_identifiers = [i for i in str_identifiers if i is not None]
+                if not str_identifiers:
+                    return []
+                # Bug fix: profiles.user_id is stored as ObjectId in
+                # Mongo but as TEXT in Weaviate. Convert back to
+                # ObjectId for the Mongo query, otherwise $in matches
+                # nothing and concierge_scan reports 0 matches even
+                # when Weaviate found great hits.
+                if collection_name == "profiles":
+                    from bson import ObjectId
+                    query_ids: list[Any] = []
+                    for s in str_identifiers:
+                        try:
+                            query_ids.append(ObjectId(s))
+                        except Exception:
+                            continue
+                else:
+                    query_ids = list(str_identifiers)
+                if not query_ids:
                     return []
                 docs = await coll.find(
-                    {identifier: {"$in": identifiers}}
+                    {identifier: {"$in": query_ids}}
                 ).to_list(length=top_k)
-                # Preserve Weaviate's similarity ranking.
-                order = {ident: i for i, ident in enumerate(identifiers)}
-                docs.sort(key=lambda d: order.get(d.get(identifier), 999))
+                # Preserve Weaviate's similarity ranking. Match by the
+                # original-string-form identifier (str(_id) for profiles).
+                order = {s: i for i, s in enumerate(str_identifiers)}
+                def _key(d: dict[str, Any]) -> int:
+                    raw = d.get(identifier)
+                    return order.get(str(raw) if raw is not None else "", 999)
+                docs.sort(key=_key)
                 return docs
             except Exception as exc:
                 print(f"[vector_store] weaviate query failed, falling back: {exc}")

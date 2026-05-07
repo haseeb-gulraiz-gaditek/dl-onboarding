@@ -632,3 +632,64 @@ learnings:
       must lead to either content (filled state) or a clear
       next action (empty state with CTA).
     category: process
+  - date: 2026-05-07
+    cycle: "live-narrowing-onboarding"
+    insight: |
+      Hidden assumptions in upstream code break new flows silently.
+      The classic /onboarding lazy-creates a profiles row via GET
+      /api/questions/next. The new live flow never called that
+      endpoint, so users had no profiles row. ensure_profile_embedding
+      then bailed silently with `return False`, vector stayed empty,
+      hybrid query was skipped, fallback ran with a zero vector,
+      and Mongo returned tools in insertion order — which happened
+      to be dev/agent-flavored. The user saw "marketer profile gives
+      engineering tools" with no error. Pattern: when adding a new
+      caller to an existing pipeline, audit ALL silent-bail paths in
+      the helpers it depends on. A `return False` that "looks right"
+      in the original context can become a major footgun for the
+      second caller.
+    category: architecture
+  - date: 2026-05-07
+    cycle: "live-narrowing-onboarding"
+    insight: |
+      A graph that "looks live" but isn't is worse than no graph.
+      First version of the live-onboarding ToolGraph rendered the
+      same 16 hardcoded MESH_TOOLS for every persona. Users assumed
+      the nodes were their actual matches, were confused when the
+      Marketer's graph showed Linear/Cursor/Claude. The right fix
+      was to make the ToolGraph accept a `tools` prop and reconcile
+      by id (fade-in new, fade-out removed) so nodes ARE the
+      backend-returned recommendations. Decorative animation is fine
+      for hero/landing surfaces; live-data surfaces should NEVER
+      ship with placeholder data that resembles real data.
+    category: process
+  - date: 2026-05-07
+    cycle: "live-narrowing-onboarding"
+    insight: |
+      Latency budgets cliff under VPN. Set Weaviate gRPC init
+      timeout to 2s thinking "either it works or it doesn't". Under
+      VPN, gRPC handshake (TCP + TLS + HTTP/2 + health probe) takes
+      3-5 RTTs which routinely needs 1.5-2s. Result: every backend
+      restart with VPN on cached _client=None and silently fell to
+      Mongo cosine fallback, with the user thinking Weaviate was
+      working. Bumped to 8s. Pattern: when a timeout sits at the
+      cliff between two real-world latencies (LAN ~50ms vs VPN
+      ~250ms RTT), pick the timeout that accommodates the slower
+      case — fast-fail isn't worth silent degradation.
+    category: performance
+  - date: 2026-05-07
+    cycle: "live-narrowing-onboarding"
+    insight: |
+      Filtering at the wrong rank-position is a debugging trap.
+      Cycle #15 dropped tools tagged `all_time_best` (household
+      names) from live-flow results, with over-fetch buffer K+12.
+      Counted on "30% global filter rate" being even across the
+      ranking. It isn't — household names CLUSTER at the top of
+      hybrid scores because they're the most-embedded, best-matched
+      tools. The K+12 buffer ate the filter and `count_kept`
+      dropped to ~10 instead of K=20. Bumped to K+30. Pattern: when
+      filtering POST-rank by a property correlated with rank, the
+      filter rate at the top is much higher than the global rate.
+      Either filter pre-rank (in the search query) or set the
+      buffer 2-3x what global rate suggests.
+    category: architecture

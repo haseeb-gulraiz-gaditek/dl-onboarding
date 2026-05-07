@@ -593,7 +593,7 @@ items:
   - id: 15
     summary: "live-narrowing-onboarding"
     priority: high
-    status: in_progress
+    status: done
     added: 2026-05-06
     promoted_to_cycle: "live-narrowing-onboarding"
     promoted_at: "2026-05-06"

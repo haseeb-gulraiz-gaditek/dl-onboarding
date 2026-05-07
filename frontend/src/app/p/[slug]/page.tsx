@@ -246,6 +246,10 @@ export default function ProductPage({
                       {launch.target_community_slugs.length > 1 ? "s" : ""}
                     </span>
                   )}
+                  <span style={{ color: "var(--accent)" }}>
+                    matched {launch.matched_count} profile
+                    {launch.matched_count === 1 ? "" : "s"}
+                  </span>
                 </div>
               </div>
             </section>
@@ -394,6 +398,15 @@ export default function ProductPage({
               <dd style={{ margin: 0, color: "var(--ink-1)" }}>
                 {tool.is_founder_launched ? "founder launch" : "curated"}
               </dd>
+              {launch && (
+                <>
+                  <dt>matched</dt>
+                  <dd style={{ margin: 0, color: "var(--accent)" }}>
+                    {launch.matched_count} profile
+                    {launch.matched_count === 1 ? "" : "s"}
+                  </dd>
+                </>
+              )}
               {firstCommunity && (
                 <>
                   <dt>discuss</dt>

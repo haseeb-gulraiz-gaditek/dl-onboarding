@@ -355,6 +355,7 @@ export interface LaunchMeta {
   icp_description: string;
   approved_at: string | null;
   target_community_slugs: string[];
+  matched_count: number;
 }
 
 export interface ProductPageResponse {

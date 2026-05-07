@@ -29,6 +29,7 @@ class LaunchMeta(BaseModel):
     icp_description: str
     approved_at: datetime | None
     target_community_slugs: list[str] = []
+    matched_count: int = 0   # cycle #15: users surfaced by concierge scan
 
 
 class ProductPageResponse(BaseModel):

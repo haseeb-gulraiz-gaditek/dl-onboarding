@@ -47,7 +47,9 @@ async def get_product_page(
     if launched_via_id is not None:
         launch_doc = await find_launch_by_id(launched_via_id)
         if launch_doc is not None:
+            from app.founders.analytics import matched_count
             founder = await find_user_by_id(str(launch_doc["founder_user_id"]))
+            matched = await matched_count(launch_doc["_id"])
             launch_meta = LaunchMeta(
                 founder_email=founder.get("email", "") if founder else "",
                 founder_display_name=(
@@ -59,6 +61,7 @@ async def get_product_page(
                 target_community_slugs=launch_doc.get(
                     "target_community_slugs"
                 ) or [],
+                matched_count=matched,
             )
 
     return ProductPageResponse(

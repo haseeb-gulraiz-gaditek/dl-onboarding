@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mesh — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-0: oklch(0.10 0.005 280);
+    --bg-1: oklch(0.14 0.008 280);
+    --bg-2: oklch(0.18 0.010 280);
+    --line-0: oklch(0.30 0.012 280);
+    --ink-0: oklch(0.96 0.005 280);
+    --ink-1: oklch(0.78 0.012 280);
+    --ink-2: oklch(0.62 0.015 280);
+    --ink-3: oklch(0.45 0.014 280);
+    --accent: oklch(0.74 0.16 270);
+    --accent-soft: oklch(0.34 0.10 270 / 0.35);
+    --good: oklch(0.78 0.16 150);
+    --warn: oklch(0.74 0.16 35);
+    --r-sm: 8px;
+    --r-md: 14px;
+    --r-pill: 999px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg-0); color: var(--ink-0); overflow: hidden; }
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    font-feature-settings: "ss01", "cv01";
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  .deck { position: relative; width: 100vw; height: 100vh; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    padding: 7vh 9vw 9vh 9vw;
+    opacity: 0; transform: translateY(20px);
+    pointer-events: none;
+    transition: opacity 400ms ease, transform 400ms ease;
+    overflow: auto;
+  }
+  .slide.active {
+    opacity: 1; transform: translateY(0); pointer-events: auto;
+  }
+
+  /* Scanline / grid overlay */
+  .deck::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      radial-gradient(circle at 20% 0%, oklch(0.35 0.12 270 / 0.12), transparent 50%),
+      radial-gradient(circle at 80% 100%, oklch(0.35 0.10 200 / 0.10), transparent 50%);
+    z-index: 0;
+  }
+  .slide > * { position: relative; z-index: 1; }
+
+  /* Eyebrow */
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-3); margin-bottom: 18px;
+  }
+  .eyebrow .accent { color: var(--accent); }
+
+  /* Headings */
+  h1.display {
+    font-family: "Lora", Georgia, serif;
+    font-weight: 600; font-size: clamp(48px, 7vw, 92px);
+    line-height: 1.05; letter-spacing: -0.015em;
+    color: var(--ink-0); margin-bottom: 24px;
+  }
+  h1.display em { color: var(--accent); font-style: normal; }
+  h2.title {
+    font-family: "Lora", Georgia, serif;
+    font-weight: 600; font-size: clamp(32px, 4.5vw, 56px);
+    line-height: 1.1; letter-spacing: -0.01em;
+    color: var(--ink-0); margin-bottom: 16px;
+  }
+  h2.title em { color: var(--accent); font-style: normal; }
+  h3.subtitle {
+    font-family: "Inter", sans-serif;
+    font-weight: 500; font-size: clamp(18px, 1.7vw, 22px);
+    color: var(--ink-1); margin-bottom: 32px; max-width: 60ch;
+  }
+
+  p { color: var(--ink-1); font-size: clamp(15px, 1.3vw, 18px); max-width: 64ch; margin-bottom: 12px; }
+  p.lead { font-size: clamp(18px, 1.6vw, 22px); color: var(--ink-0); max-width: 56ch; margin-bottom: 24px; }
+  ul, ol { margin: 8px 0 12px 22px; color: var(--ink-1); font-size: clamp(14px, 1.2vw, 17px); }
+  li { margin-bottom: 8px; }
+  li strong { color: var(--ink-0); font-weight: 600; }
+
+  .mono {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--ink-2);
+  }
+
+  /* Card */
+  .card {
+    background: var(--bg-1);
+    border: 1px solid var(--line-0);
+    border-radius: var(--r-md);
+    padding: 24px 28px;
+  }
+  .card.accent {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  }
+
+  /* Tweet quote */
+  .tweet {
+    background: var(--bg-1); border: 1px solid var(--line-0);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--r-md); padding: 24px 28px;
+    max-width: 720px; font-size: 18px; color: var(--ink-0);
+    font-style: italic;
+  }
+  .tweet .meta {
+    display: block; margin-top: 16px;
+    font-style: normal; font-family: "JetBrains Mono", monospace;
+    font-size: 12px; color: var(--ink-3);
+  }
+
+  /* Two-column */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .col-eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 8px;
+  }
+
+  /* Pill chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .chip {
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    padding: 5px 12px; border-radius: var(--r-pill);
+    background: var(--bg-2); border: 1px solid var(--line-0);
+    color: var(--ink-2);
+  }
+  .chip.accent { color: var(--accent); border-color: var(--accent-soft); }
+  .chip.good { color: var(--good); border-color: oklch(0.45 0.10 150 / 0.5); }
+
+  /* Feature grid */
+  .feat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 24px; }
+  .feat {
+    background: var(--bg-1); border: 1px solid var(--line-0);
+    border-radius: var(--r-md); padding: 20px 22px;
+  }
+  .feat .num {
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    color: var(--accent); letter-spacing: 0.15em;
+  }
+  .feat h4 {
+    font-family: "Lora", serif; font-weight: 600; font-size: 22px;
+    margin: 6px 0 10px 0; color: var(--ink-0);
+  }
+  .feat p { font-size: 14px; color: var(--ink-2); margin: 0; }
+
+  /* Demo screen */
+  .demo-screen {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; gap: 12px;
+  }
+  .demo-screen .glyph {
+    font-size: 96px;
+    color: var(--accent);
+    margin-bottom: 24px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.7; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+
+  /* Algorithm pipeline */
+  .pipeline {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; margin-top: 32px;
+  }
+  .step {
+    background: var(--bg-1); border: 1px solid var(--line-0);
+    border-radius: var(--r-md); padding: 20px 18px;
+    position: relative;
+  }
+  .step::after {
+    content: "→"; position: absolute; top: 50%; right: -16px;
+    transform: translateY(-50%); color: var(--accent); font-size: 20px;
+    font-family: "JetBrains Mono", monospace;
+  }
+  .step:last-child::after { display: none; }
+  .step .label {
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    color: var(--accent); letter-spacing: 0.15em;
+  }
+  .step h4 {
+    font-family: "Lora", serif; font-size: 28px;
+    margin: 6px 0 14px 0; color: var(--ink-0);
+  }
+  .step .row { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+  .step .row b { color: var(--ink-0); font-weight: 500; }
+
+  /* Diagram block */
+  .diagram {
+    background: var(--bg-1); border: 1px solid var(--line-0);
+    border-radius: var(--r-md); padding: 28px;
+    margin-top: 24px;
+    font-family: "JetBrains Mono", monospace; font-size: 13px;
+    color: var(--ink-1);
+    white-space: pre; overflow-x: auto;
+    line-height: 1.7;
+  }
+  .diagram .accent { color: var(--accent); }
+  .diagram .dim { color: var(--ink-3); }
+
+  /* Footer / progress */
+  .deck-footer {
+    position: fixed; bottom: 24px; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px; pointer-events: none; z-index: 10;
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    color: var(--ink-3);
+  }
+  .deck-footer .brand { letter-spacing: 0.1em; }
+  .deck-footer .pos { letter-spacing: 0.15em; }
+  .progress {
+    position: fixed; bottom: 0; left: 0; height: 3px;
+    background: var(--accent);
+    transition: width 400ms ease; z-index: 11;
+  }
+
+  /* Two-tower side-by-side */
+  .two-tower {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    gap: 20px; align-items: stretch; margin-top: 24px;
+  }
+  .tower {
+    background: var(--bg-1); border: 1px solid var(--line-0);
+    border-radius: var(--r-md); padding: 24px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .tower .head {
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    letter-spacing: 0.15em; color: var(--accent);
+  }
+  .tower h4 {
+    font-family: "Lora", serif; font-size: 24px;
+    color: var(--ink-0); margin: 4px 0 12px 0;
+  }
+  .tower .layer {
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    color: var(--ink-1); padding: 8px 12px;
+    background: var(--bg-2); border-radius: var(--r-sm);
+  }
+  .meet {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--accent); font-family: "Lora", serif;
+    font-size: 28px; padding: 0 12px;
+  }
+  .meet .dot { font-size: 12px; color: var(--ink-3); margin-top: 6px; font-family: "JetBrains Mono", monospace; }
+
+  /* Algorithm second slide */
+  .alpha-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 20px; }
+  .alpha-cell {
+    background: var(--bg-1); border: 1px solid var(--line-0);
+    border-radius: var(--r-sm); padding: 14px;
+    text-align: center;
+  }
+  .alpha-cell .q {
+    font-family: "JetBrains Mono", monospace; color: var(--accent);
+    font-size: 11px; letter-spacing: 0.15em;
+  }
+  .alpha-cell .alpha {
+    font-family: "Lora", serif; font-size: 32px;
+    color: var(--ink-0); margin: 4px 0;
+  }
+  .alpha-cell .desc { font-size: 12px; color: var(--ink-2); }
+
+  /* Title slide */
+  .title-slide {
+    align-items: flex-start; justify-content: center;
+  }
+
+  /* Two-column metric block */
+  .metric {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 20px; background: var(--bg-1);
+    border: 1px solid var(--line-0); border-radius: var(--r-md);
+  }
+  .metric .num {
+    font-family: "Lora", serif; font-size: 48px;
+    color: var(--accent); line-height: 1;
+  }
+  .metric .lbl {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px; color: var(--ink-3);
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+
+  /* Closing */
+  .closing { align-items: center; justify-content: center; text-align: center; }
+  .closing h1 { text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- 1. TITLE / PROBLEM -->
+  <section class="slide active title-slide">
+    <div class="eyebrow">/ <span class="accent">disrupt labs</span> · onboarding hackathon · 2026-05-08</div>
+    <h1 class="display">Mesh.<br />The context-graph<br />for AI tools.</h1>
+    <p class="lead">A demo, in 17 slides.</p>
+    <div class="chips" style="margin-top: auto;">
+      <span class="chip">haseeb gulraiz</span>
+      <span class="chip accent">5 days · 16 SDD cycles · 321 tests</span>
+    </div>
+  </section>
+
+  <!-- 2. PROBLEM (with tweet) -->
+  <section class="slide">
+    <div class="eyebrow">01 · <span class="accent">the problem</span></div>
+    <h2 class="title">There are too many AI tools<br />and <em>nobody knows which fit them</em>.</h2>
+    <div class="cols" style="gap: 48px; margin-top: 24px; align-items: center;">
+      <div>
+        <p class="lead">A new AI product launches every week. Reviews are gamed. "Best of" lists rank by SEO. Founders pay for impressions on platforms that don't know who their user is.</p>
+        <p>The match between an AI tool and the user it would actually change a week for is invisible to both sides.</p>
+        <ul>
+          <li>Users default to ChatGPT, Notion, Slack — household names everyone already knows.</li>
+          <li>Founders blow ad budgets on impressions disconnected from fit.</li>
+          <li>The right tool for the right person doesn't find a path.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="tweet">
+          [ paste your tweet here — the original prompt that started Mesh ]
+          <span class="meta">— @haseeb · X / 2026</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. SOLUTION (Founder POV) -->
+  <section class="slide">
+    <div class="eyebrow">02 · <span class="accent">the solution — founder side</span></div>
+    <h2 class="title">Pay once. Reach <em>users built for you</em>.</h2>
+    <p class="lead">Founders submit a launch with URL, problem statement, ICP, and target communities. Mesh embeds the ICP, runs the inverse of the user-side matching algorithm, and surfaces the launch only to the top 5% by cosine similarity.</p>
+    <div class="feat-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top: 32px;">
+      <div class="feat">
+        <span class="num">/01</span>
+        <h4>Submit</h4>
+        <p>5-step form: URL · problem · ICP · pricing · target communities. Founder presence links optional.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/02</span>
+        <h4>Verify</h4>
+        <p>Human admin reviews within 24h. Approval triggers the publish pipeline. No auto-approval in production.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/03</span>
+        <h4>Reach</h4>
+        <p>Auto-post to communities · concierge nudge to top-5 matched users · live in /p/{slug} with upvote + analytics.</p>
+      </div>
+    </div>
+    <p class="mono" style="margin-top: 32px;">CPA on qualified engagement only. No CPM. No "sponsored" placement on the organic ranking.</p>
+  </section>
+
+  <!-- 4. SOLUTION (User POV) -->
+  <section class="slide">
+    <div class="eyebrow">03 · <span class="accent">the solution — user side</span></div>
+    <h2 class="title">Four taps. Six tools<br />that <em>actually fit</em>.</h2>
+    <p class="lead">A live-narrowing onboarding builds your context profile in real time. Each tap re-embeds the profile and shrinks the candidate set from ~40 → 6 in front of your eyes.</p>
+    <div class="feat-grid" style="grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 24px;">
+      <div class="feat">
+        <span class="num">Q1</span>
+        <h4>Role</h4>
+        <p>Job title · level · industry. Anchors the domain.</p>
+      </div>
+      <div class="feat">
+        <span class="num">Q2</span>
+        <h4>Stack</h4>
+        <p>Which tools you actually have open most days. Filters by reality.</p>
+      </div>
+      <div class="feat">
+        <span class="num">Q3</span>
+        <h4>Task</h4>
+        <p>The big task you actually finish. Workflow shape.</p>
+      </div>
+      <div class="feat">
+        <span class="num">Q4</span>
+        <h4>Friction</h4>
+        <p>What slows you down most. The friction Mesh aims at.</p>
+      </div>
+    </div>
+    <div class="chips" style="margin-top: 24px;">
+      <span class="chip accent">household names filtered out — surface lesser-known fits</span>
+      <span class="chip">profile vector persists — refresh anywhere, edit anytime</span>
+    </div>
+  </section>
+
+  <!-- 5. ACTUAL DEMO -->
+  <section class="slide">
+    <div class="demo-screen">
+      <div class="glyph">◌</div>
+      <div class="eyebrow">04 · live demo</div>
+      <h1 class="display" style="font-size: clamp(64px, 8vw, 120px); text-align: center;">Live walk-through.</h1>
+      <p class="lead" style="text-align: center; margin-top: 16px;">switch to <span class="mono" style="color: var(--accent);">localhost:3000</span> →</p>
+    </div>
+  </section>
+
+  <!-- 6. ALGORITHM I — Two-tower frame + pipeline -->
+  <section class="slide">
+    <div class="eyebrow">05 · <span class="accent">the algorithm — i</span></div>
+    <h2 class="title">One embedding space.<br /><em>Two towers</em> meeting in it.</h2>
+    <p class="lead">Mesh borrows the two-tower retrieval idea: encode both sides of a match into the same vector space, then retrieve by cosine. Users → ProfileEmbedding. Tools → ToolEmbedding.</p>
+    <div class="two-tower">
+      <div class="tower">
+        <span class="head">user tower</span>
+        <h4>profile_text → vector</h4>
+        <div class="layer">role · level · industry</div>
+        <div class="layer">+ daily-stack picks</div>
+        <div class="layer">+ task signature</div>
+        <div class="layer">+ friction phrasing</div>
+      </div>
+      <div class="meet">
+        ⇋
+        <span class="dot">cosine ≥ 0.85</span>
+      </div>
+      <div class="tower">
+        <span class="head">tool tower</span>
+        <h4>name + tagline + description → vector</h4>
+        <div class="layer">slug · category</div>
+        <div class="layer">labels (BM25 surface)</div>
+        <div class="layer">tagline (BM25 surface)</div>
+        <div class="layer">description (BM25 surface)</div>
+      </div>
+    </div>
+    <p class="mono" style="margin-top: 24px;">same engine matches both directions: users find tools · founders find users.</p>
+  </section>
+
+  <!-- 7. ALGORITHM II — alpha schedule + K shrink -->
+  <section class="slide">
+    <div class="eyebrow">06 · <span class="accent">the algorithm — ii</span></div>
+    <h2 class="title">Same cosine.<br /><em>Schedule shifts</em> per question.</h2>
+    <p class="lead">Each tap, the user vector grows from concrete (role, stack) to semantic (task, friction). Hybrid alpha shifts from BM25-leaning to vector-leaning to match.</p>
+
+    <div class="alpha-row">
+      <div class="alpha-cell">
+        <div class="q">Q1 · ROLE</div>
+        <div class="alpha">α 0.3</div>
+        <div class="desc">70% keyword · sparse signals lead</div>
+      </div>
+      <div class="alpha-cell">
+        <div class="q">Q2 · STACK</div>
+        <div class="alpha">α 0.5</div>
+        <div class="desc">balanced · stack tokens are sparse-friendly</div>
+      </div>
+      <div class="alpha-cell">
+        <div class="q">Q3 · TASK</div>
+        <div class="alpha">α 0.7</div>
+        <div class="desc">30% keyword · task vocab is semantic</div>
+      </div>
+      <div class="alpha-cell">
+        <div class="q">Q4 · FRICTION</div>
+        <div class="alpha">α 0.8</div>
+        <div class="desc">20% keyword · friction phrasing is semantic</div>
+      </div>
+    </div>
+
+    <div class="diagram" style="margin-top: 32px;">
+<span class="dim">profile_text grows ⟶</span>
+
+  Q1                Q2                Q3                Q4
+  <span class="accent">role</span>            + <span class="accent">stack</span>          + <span class="accent">task</span>           + <span class="accent">friction</span>
+   │                 │                 │                 │
+   ▼                 ▼                 ▼                 ▼
+  embed              embed             embed             embed
+   │                 │                 │                 │
+   ▼                 ▼                 ▼                 ▼
+  hybrid α=<span class="accent">0.3</span>     hybrid α=<span class="accent">0.5</span>      hybrid α=<span class="accent">0.7</span>      hybrid α=<span class="accent">0.8</span>
+   │                 │                 │                 │
+   ▼                 ▼                 ▼                 ▼
+  K=<span class="accent">20</span>              K=<span class="accent">15</span>              K=<span class="accent">10</span>              K=<span class="accent">6</span>     +1 wildcard
+   │                 │                 │                 │
+   └─── live UI shrinks 40 ⟶ 20 ⟶ 15 ⟶ 10 ⟶ 6 ────┘
+                                                       │
+                                                       ▼
+                                              <span class="accent">final 6 + wildcard</span>
+                                              cached as recommendations
+                                              for /home and /p/{slug}
+    </div>
+
+    <p class="mono" style="margin-top: 16px;">household-name tools (label = all_time_best) filtered out post-hybrid. niche profiles return what they return — no padding.</p>
+  </section>
+
+  <!-- 8. FEATURES grid 1 -->
+  <section class="slide">
+    <div class="eyebrow">07 · <span class="accent">features — what shipped</span></div>
+    <h2 class="title">17 cycles. <em>15 features</em>. End to end.</h2>
+    <div class="feat-grid">
+      <div class="feat">
+        <span class="num">/01 · auth + role split</span>
+        <h4>User vs founder, structurally</h4>
+        <p>JWT (HS256, 7-day) with bcrypt; require_role middleware; constitutional invariant — founders never post in user communities.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/02 · question bank</span>
+        <h4>Append-only answers + lazy profiles</h4>
+        <p>Classic onboarding loop; answers immutable for audit/export. profiles lazy-create with last_invalidated_at + last_recompute_at for cache validity.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/03 · catalog + curation</span>
+        <h4>Seed + admin-gated catalog</h4>
+        <p>tools_seed (curated organic) vs tools_founder_launched (paid launches). Separate collections — constitutional invariant.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/04 · weaviate pipeline</span>
+        <h4>Hybrid-ready vector layer</h4>
+        <p>Lazy-init Weaviate v4 client · ProfileEmbedding + ToolEmbedding classes · gRPC w/ REST fallback · 8s init timeout for VPN tolerance.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/05 · fast onboarding match</span>
+        <h4>Two-mode match dispatch</h4>
+        <p>Generic mode under 3 answers · embedding mode after. ~50ms / ~600ms targets. Graceful degradation when embeddings unavailable.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/06 · recommendation engine</span>
+        <h4>Cached + LLM-rerank organic recs</h4>
+        <p>Profile vector → similarity_search → GPT-5 listwise rerank · 7-day cache · 5 picks with verdict + reasoning.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. FEATURES grid 2 -->
+  <section class="slide">
+    <div class="eyebrow">08 · <span class="accent">features — continued</span></div>
+    <h2 class="title">Communities, launches, analytics.</h2>
+    <div class="feat-grid">
+      <div class="feat">
+        <span class="num">/07 · communities + comments</span>
+        <h4>Flat threads with cross-posting</h4>
+        <p>POST /api/posts with cross_post_slugs · per-tool / -post / -comment voting · founders read-only by structure.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/08 · founder launch</span>
+        <h4>Submit + 5-step form + admin queue</h4>
+        <p>URL · problem · ICP (Who/Job/Pain) · pricing · target communities. Validation per step. Pending → Approved/Rejected → Live.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/09 · publish + concierge nudge</span>
+        <h4>Approval fans out to communities + matched users</h4>
+        <p>Auto-post to each target community · top-5 user profiles by cosine ≥ 0.85 receive a concierge nudge in their Inbox.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/10 · /tools (Mine / Explore / New)</span>
+        <h4>Personal stack + browse + new launches</h4>
+        <p>Save / using-status / unsave on personal tools · category + label + q filters on Explore · joined-communities filter on New.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/11 · founder dashboard</span>
+        <h4>Per-launch + aggregate analytics</h4>
+        <p>matched · tell-me-more · skip · clicks · clicks_by_community · clicks_by_surface. Constitutional anonymization preserved.</p>
+      </div>
+      <div class="feat">
+        <span class="num">/12 · in-app inbox</span>
+        <h4>Role-agnostic notifications</h4>
+        <p>concierge_nudge · launch_approved · launch_rejected · community_reply. Bell + dropdown + banner + mark-all-read.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. FEATURES grid 3 -->
+  <section class="slide">
+    <div class="eyebrow">09 · <span class="accent">features — flagship</span></div>
+    <h2 class="title">Live narrowing.<br /><em>The cinematic centerpiece.</em></h2>
+    <div class="feat-grid">
+      <div class="feat">
+        <span class="num">/13 · frontend-core</span>
+        <h4>7 routes wired against real APIs</h4>
+        <p>Next.js 14 + React 18 + TS + pure CSS OKLCH tokens. ToolGraph canvas. Role-aware /home (user ≠ founder).</p>
+      </div>
+      <div class="feat">
+        <span class="num">/14 · frontend-secondary</span>
+        <h4>Community / inbox / tools / admin / communities-browse</h4>
+        <p>11 more routes · global header bell · admin probe · 18 routes total · Concierge → Inbox rename for clarity.</p>
+      </div>
+      <div class="feat" style="grid-column: span 2; border-color: var(--accent);">
+        <span class="num" style="color: var(--accent);">/15 · LIVE-NARROWING ONBOARDING</span>
+        <h4>4 questions · α schedule · K shrink · graph nodes ARE the matches</h4>
+        <p>Per-tap: persist answer · re-embed profile · hybrid query (alpha 0.3→0.8) · K shrink (20→6) · layer-label (general/relevant/niche) · wildcard from over-fetch · cache to /home recs · tag drives ToolGraph reconcile.</p>
+        <div class="chips" style="margin-top: 12px;">
+          <span class="chip accent">27 seeded personas</span>
+          <span class="chip accent">546 tools embedded</span>
+          <span class="chip accent">VPN-tolerant</span>
+          <span class="chip">env-flagged · classic flow stays</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. REPO LEARNINGS -->
+  <section class="slide">
+    <div class="eyebrow">10 · <span class="accent">repo learnings</span></div>
+    <h2 class="title">The actual task<br />was <em>fluency in the discipline</em>.</h2>
+    <p class="lead">SDD + VKF aren't documentation chores — they're a forcing function for shipping coherent product.</p>
+
+    <div class="cols" style="margin-top: 24px;">
+      <div>
+        <div class="col-eyebrow">where it helped</div>
+        <ul>
+          <li><strong>Constitution as guardrails.</strong> Three constitutional invariants (separate collections · no founders in user communities · CPA only) prevented dozens of bad decisions across 15 cycles.</li>
+          <li><strong>Spec-delta forced cross-system thinking.</strong> Every cycle had to specify backend + frontend + tests + downstream effects. No "ship the API and figure out the UI later."</li>
+          <li><strong>Cycles compose.</strong> Cycle #15's live flow could ship in 2 days because cycles #4 (Weaviate), #6 (engine), #12 (inbox) were already solid abstractions.</li>
+          <li><strong>learnings.yaml beats memory.</strong> 51 entries — specific, dated, reasoned. Future-me reads them, not future-me's vague recollection.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="col-eyebrow">frictions</div>
+        <ul>
+          <li><strong>Spec-delta GWT scenarios slow on UI work.</strong> Given/When/Then is great for backend invariants; less great for "the graph fade-in feels right." Wrote them anyway; sometimes it was theatre.</li>
+          <li><strong>VKF and SDD overlap on architecture.</strong> Where does "Weaviate is gRPC-based" live? Architecture doc · technical-constitution · feature spec · all three? Picked architecture/system-design as canonical.</li>
+          <li><strong>Cycle granularity tradeoff.</strong> Cycle #13 was a 4000-line monster (frontend-core); cycle #14 was 2000 (frontend-secondary). In hindsight three cycles of 1500 each would've been cleaner reviews.</li>
+          <li><strong>Validation tasks are hard to truly tick.</strong> "End-to-end smoke" is rarely fully verified mid-cycle; usually validated only at /sdd:complete time, sometimes deferred.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. HACKATHON LEARNINGS — Karpathy loop -->
+  <section class="slide">
+    <div class="eyebrow">11 · <span class="accent">hackathon learnings — i</span></div>
+    <h2 class="title">Karpathy's loop, applied to <em>everything</em>.</h2>
+    <p class="lead">The same loop ran on UX, algorithm research, repo discipline, and code. <strong>Generate → score → keep / abandon → next → synthesize.</strong></p>
+
+    <div class="cols">
+      <div class="card">
+        <div class="col-eyebrow">algorithm research loop</div>
+        <p style="margin-top: 8px;">16 iterations. Each: research agent generates a retrieval approach (semantic / sparse / agentic / KG / causal). Score on depth · noise · compose. Discard if dominated. Continue if substrate. Saturation at iter 11 → synthesis selected Iter 2 → Iter 5 → Iter 12 as V1 pipeline.</p>
+        <div class="chips"><span class="chip accent">~85min budget · 11 advanced · 1 discarded</span></div>
+      </div>
+      <div class="card">
+        <div class="col-eyebrow">UX research loop</div>
+        <p style="margin-top: 8px;">Multiple persona walkthroughs (ACCA · SWE · Doctor) at every cycle that touched ranking. Score on category-fit · obvious-misses · niche-handling. Backtrack when persona X gets persona Y's tools. Pattern: don't just trust the algorithm — walk a persona by hand each time the inputs change.</p>
+        <div class="chips"><span class="chip accent">3 personas · re-run on every algo change</span></div>
+      </div>
+    </div>
+
+    <p class="mono" style="margin-top: 24px;">the loop forces you to <span style="color: var(--accent);">have a separate evaluator from the generator</span>. you stop falling in love with your own first answer.</p>
+  </section>
+
+  <!-- 13. HACKATHON LEARNINGS — Agent delegation -->
+  <section class="slide">
+    <div class="eyebrow">12 · <span class="accent">hackathon learnings — ii</span></div>
+    <h2 class="title">Three agents.<br />Three <em>specialized loops</em>.</h2>
+
+    <div class="cols-3" style="margin-top: 32px;">
+      <div class="card">
+        <div class="col-eyebrow">agent 1 · MVP shipper</div>
+        <p style="margin-top: 8px;">Worked the active SDD cycle. Stay in the spec-delta. Tick tasks as they finish. Commit per implementation step. Mostly Edit + Bash + Read tools.</p>
+        <div class="chips"><span class="chip">opus · primary thread</span></div>
+      </div>
+      <div class="card">
+        <div class="col-eyebrow">agent 2 · research + eng</div>
+        <p style="margin-top: 8px;">Spawned for self-contained sub-investigations: algorithm iterations · benchmark methodologies · "should we use Postgres or Mongo here." Returns a digest, doesn't pollute the main thread's context.</p>
+        <div class="chips"><span class="chip">subagent · explore + general-purpose</span></div>
+      </div>
+      <div class="card">
+        <div class="col-eyebrow">agent 3 · discipline keeper</div>
+        <p style="margin-top: 8px;">Watched for SDD/VKF compliance. Did I ingest before pasting? Did I /sdd:start before coding? Did the spec-delta have GWT? Pre-commit + CLAUDE.md guardrails.</p>
+        <div class="chips"><span class="chip">CLAUDE.md routing · vkf/sdd commands</span></div>
+      </div>
+    </div>
+
+    <p class="mono" style="margin-top: 32px;">delegation isn't just speed — it's <span style="color: var(--accent);">protecting the main loop's context window</span>. agent 2's 30 reads don't enter agent 1's history.</p>
+  </section>
+
+  <!-- 14. HACKATHON LEARNINGS — End to end MVP -->
+  <section class="slide">
+    <div class="eyebrow">13 · <span class="accent">hackathon learnings — iii</span></div>
+    <h2 class="title">Design → research → code → present.<br /><em>One person, five days.</em></h2>
+
+    <div class="cols-3" style="margin-top: 24px;">
+      <div class="metric">
+        <div class="lbl">/ cycles shipped</div>
+        <div class="num">16</div>
+      </div>
+      <div class="metric">
+        <div class="lbl">/ backend tests</div>
+        <div class="num">321</div>
+      </div>
+      <div class="metric">
+        <div class="lbl">/ frontend routes</div>
+        <div class="num">18</div>
+      </div>
+      <div class="metric">
+        <div class="lbl">/ feature specs</div>
+        <div class="num">13</div>
+      </div>
+      <div class="metric">
+        <div class="lbl">/ tools indexed</div>
+        <div class="num">546</div>
+      </div>
+      <div class="metric">
+        <div class="lbl">/ learnings logged</div>
+        <div class="num">51</div>
+      </div>
+    </div>
+
+    <div class="cols" style="margin-top: 32px;">
+      <div>
+        <div class="col-eyebrow">what worked</div>
+        <ul>
+          <li><strong>Vertical slices, not horizontal layers.</strong> Each cycle shipped backend + frontend + tests for one user-visible thing. Never "build all backends, then all frontends."</li>
+          <li><strong>Real data > placeholder.</strong> 27 seeded users · 546 real tool embeddings · the demo runs on live Weaviate + Mongo, not a fixture.</li>
+          <li><strong>Loop discipline beats inspiration.</strong> Hardest decisions came from <em>scoring then comparing</em>, not from "what feels right."</li>
+        </ul>
+      </div>
+      <div>
+        <div class="col-eyebrow">what I'd change next time</div>
+        <ul>
+          <li><strong>Smaller cycles for UI.</strong> Three 1500-line cycles beat one 4000-line cycle for review fidelity.</li>
+          <li><strong>Earlier deploy target.</strong> Local-only until day 5 means demo-day networking risk. Even a Fly.io + Vercel skeleton on day 2 is worth it.</li>
+          <li><strong>Persona walkthrough as <em>required</em> validation.</strong> Tick was bypassed once or twice; a missed walkthrough caused the "marketer gets dev tools" bug.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15. CLOSING -->
+  <section class="slide closing">
+    <div class="eyebrow">14 · <span class="accent">end</span></div>
+    <h1 class="display" style="font-size: clamp(72px, 9vw, 140px); text-align: center;">Mesh.</h1>
+    <p class="lead" style="text-align: center; max-width: 60ch;">The AI tool recommendation engine that actually knows your context.</p>
+    <div class="chips" style="margin-top: 32px; justify-content: center;">
+      <span class="chip accent">github.com/haseeb-gulraiz-gaditek/dl-onboarding</span>
+      <span class="chip">disrupt labs · onboarding hackathon · 2026</span>
+    </div>
+    <p class="mono" style="margin-top: 64px; text-align: center; color: var(--ink-3);">questions ↘</p>
+  </section>
+
+</div>
+
+<div class="deck-footer">
+  <span class="brand">/ MESH</span>
+  <span class="pos"><span id="cur">1</span> / <span id="total">15</span></span>
+</div>
+<div class="progress" id="progress" style="width: 6.6%;"></div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const cur = document.getElementById('cur');
+  const total = document.getElementById('total');
+  const progress = document.getElementById('progress');
+  total.textContent = slides.length;
+
+  let i = 0;
+  function show(n) {
+    n = Math.max(0, Math.min(slides.length - 1, n));
+    slides[i].classList.remove('active');
+    i = n;
+    slides[i].classList.add('active');
+    cur.textContent = i + 1;
+    progress.style.width = ((i + 1) / slides.length * 100) + '%';
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown' || e.key === 'l') show(i + 1);
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'h') show(i - 1);
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key === 'f') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  });
+
+  // Click anywhere to advance.
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('a')) return;
+    show(i + 1);
+  });
+</script>
+
+</body>
+</html>

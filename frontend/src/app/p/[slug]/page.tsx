@@ -171,24 +171,28 @@ export default function ProductPage({
             )}
           </div>
 
-          {/* About */}
-          <section style={{ marginTop: 32 }}>
-            <h2
-              className="mono"
-              style={{
-                fontSize: 11,
-                color: "var(--ink-3)",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                marginBottom: 12,
-              }}
-            >
-              About
-            </h2>
-            <p className="body-lg" style={{ whiteSpace: "pre-line" }}>
-              {tool.description}
-            </p>
-          </section>
+          {/* About — only for curated tools. Founder launches build
+              their description from problem + ICP, which the "Why this
+              exists" card below already shows in a cleaner format. */}
+          {!launch && (
+            <section style={{ marginTop: 32 }}>
+              <h2
+                className="mono"
+                style={{
+                  fontSize: 11,
+                  color: "var(--ink-3)",
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                  marginBottom: 12,
+                }}
+              >
+                About
+              </h2>
+              <p className="body-lg" style={{ whiteSpace: "pre-line" }}>
+                {tool.description}
+              </p>
+            </section>
+          )}
 
           {/* Launch context */}
           {launch && (
@@ -218,12 +222,41 @@ export default function ProductPage({
                 >
                   {launch.founder_email}
                 </div>
-                <p className="body" style={{ marginTop: 16 }}>
-                  <strong>Problem:</strong> {launch.problem_statement}
-                </p>
-                <p className="body" style={{ marginTop: 8 }}>
-                  <strong>Built for:</strong> {launch.icp_description}
-                </p>
+                <div style={{ marginTop: 16 }}>
+                  <div
+                    className="mono"
+                    style={{
+                      color: "var(--ink-3)",
+                      fontSize: 11,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Problem
+                  </div>
+                  <p className="body" style={{ marginTop: 4 }}>
+                    {launch.problem_statement}
+                  </p>
+                </div>
+                <div style={{ marginTop: 16 }}>
+                  <div
+                    className="mono"
+                    style={{
+                      color: "var(--ink-3)",
+                      fontSize: 11,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Built for
+                  </div>
+                  <p
+                    className="body"
+                    style={{ marginTop: 4, whiteSpace: "pre-line" }}
+                  >
+                    {launch.icp_description}
+                  </p>
+                </div>
                 <div
                   className="mono"
                   style={{

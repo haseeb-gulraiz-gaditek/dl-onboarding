@@ -55,6 +55,13 @@ async def _resolve_target(target_type: str, target_id_str: str) -> ObjectId | No
         return doc["_id"] if doc else None
     if target_type == "tool":
         doc = await tools_seed_collection().find_one({"_id": oid})
+        if doc:
+            return doc["_id"]
+        # Fall through to founder-launched collection (cycle #15).
+        from app.db.tools_founder_launched import (
+            tools_founder_launched_collection,
+        )
+        doc = await tools_founder_launched_collection().find_one({"_id": oid})
         return doc["_id"] if doc else None
     return None
 
@@ -69,9 +76,19 @@ async def _bump_target_score(target_type: str, target_id: ObjectId, delta: int) 
             {"_id": target_id}, {"$inc": {"vote_score": delta}}
         )
     elif target_type == "tool":
-        await tools_seed_collection().update_one(
+        # Update whichever collection holds the row (try seed first,
+        # fall back to founder-launched). matched_count tells us
+        # whether the update hit; if not, try the other collection.
+        result = await tools_seed_collection().update_one(
             {"_id": target_id}, {"$inc": {"vote_score": delta}}
         )
+        if result.matched_count == 0:
+            from app.db.tools_founder_launched import (
+                tools_founder_launched_collection,
+            )
+            await tools_founder_launched_collection().update_one(
+                {"_id": target_id}, {"$inc": {"vote_score": delta}}
+            )
 
 
 async def apply_vote(

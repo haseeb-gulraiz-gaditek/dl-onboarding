@@ -335,6 +335,7 @@ export interface BannerResponse {
 // ---- Product page (cycle #9 F-PUB-4) ----
 
 export interface ProductCard {
+  id: string;
   slug: string;
   name: string;
   tagline: string;
@@ -353,6 +354,7 @@ export interface LaunchMeta {
   problem_statement: string;
   icp_description: string;
   approved_at: string | null;
+  target_community_slugs: string[];
 }
 
 export interface ProductPageResponse {

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 
 class ProductCard(BaseModel):
+    id: str
     slug: str
     name: str
     tagline: str
@@ -27,6 +28,7 @@ class LaunchMeta(BaseModel):
     problem_statement: str
     icp_description: str
     approved_at: datetime | None
+    target_community_slugs: list[str] = []
 
 
 class ProductPageResponse(BaseModel):
@@ -36,6 +38,7 @@ class ProductPageResponse(BaseModel):
 
 def to_product_card(doc: dict[str, Any], is_founder_launched: bool) -> ProductCard:
     return ProductCard(
+        id=str(doc["_id"]),
         slug=doc["slug"],
         name=doc.get("name", ""),
         tagline=doc.get("tagline", ""),

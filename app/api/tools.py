@@ -56,6 +56,9 @@ async def get_product_page(
                 problem_statement=launch_doc.get("problem_statement", ""),
                 icp_description=launch_doc.get("icp_description", ""),
                 approved_at=launch_doc.get("reviewed_at"),
+                target_community_slugs=launch_doc.get(
+                    "target_community_slugs"
+                ) or [],
             )
 
     return ProductPageResponse(

@@ -693,3 +693,75 @@ learnings:
       Either filter pre-rank (in the search query) or set the
       buffer 2-3x what global rate suggests.
     category: architecture
+
+  # ---- Hackathon-level retrospective (post-demo, 2026-05-11) ----
+  - date: 2026-05-11
+    cycle: "meta-hackathon"
+    insight: |
+      FRICTION — Task explosion on small backlog items. A basic
+      feature sometimes spawns more spec-delta tasks than the change
+      deserves. The discipline's overhead is roughly fixed (proposal +
+      spec-delta + tasks + commit conventions + archive), so it
+      amortizes badly across small items. Future-me should be quicker
+      to apply the STD-001 §2 exceptions (bug fix, refactor, config,
+      docs) and skip the full cycle when the change genuinely doesn't
+      alter observable behavior — even when "tracking it as a cycle"
+      feels safer.
+    category: process
+  - date: 2026-05-11
+    cycle: "meta-hackathon"
+    insight: |
+      FRICTION — VKF question prompts can wander. /vkf/constitution
+      and /vkf/research drill into adjacent questions you didn't come
+      in for. Useful for exploration, costly when you have a specific
+      decision to make and a clock. Future-me should bound the
+      session (set a target outcome before invoking the command) and
+      capture the side-quest as a known-unknown via /vkf/gaps rather
+      than letting it derail the current draft.
+    category: process
+  - date: 2026-05-11
+    cycle: "meta-hackathon"
+    insight: |
+      FRICTION — No parallel cycles. Independent backlog features
+      still queue serially through .claude/state/sdd-state.yaml's
+      single current_cycle slot. Can't fan two cycles out across
+      different sub-agents and merge their archives later. For a
+      hackathon solo this is fine; for a team it would be a real
+      bottleneck. Worth raising as a candidate STD-001 v1.6
+      improvement: support multiple parallel cycles keyed by branch.
+    category: tooling
+  - date: 2026-05-11
+    cycle: "meta-hackathon"
+    insight: |
+      WIN — VKF sharpens fuzzy thinking. Vague ideas ("Mesh should
+      recommend tools") became a clear written direction (mission +
+      pmf-thesis + personas + principles + positioning + icps +
+      governance) you could code against and pitch from. The
+      structure of the constitution itself forces you to answer
+      questions you'd otherwise skip — who exactly is this for, what
+      do we never compromise on, how do we behave when revenue and
+      principles conflict. That clarity persists across cycles.
+    category: process
+  - date: 2026-05-11
+    cycle: "meta-hackathon"
+    insight: |
+      WIN — SDD removes architecture surprises. Every ambiguity in a
+      feature is forced out into the spec-delta (ADDED/MODIFIED/
+      REMOVED + Given/When/Then) before code is written. The cost
+      is up-front clarity; the payoff is that implementation became
+      mechanical execution of decisions already made on paper.
+      Almost every late-cycle "surprise" turned out to be something
+      the spec-delta didn't pin down — meaning the spec was the
+      lesson, not the code.
+    category: architecture
+  - date: 2026-05-11
+    cycle: "meta-hackathon"
+    insight: |
+      WIN — Repo as the thinking trail. Every spec, every navigated
+      direction, every amendment, every learning lives in-repo as
+      versioned markdown. Nothing was lost to chat. Future contributors
+      (and future-me) can reconstruct WHY a decision was made by
+      reading archive/{slug}/proposal.md alongside the spec it merged.
+      Knowledge is not in someone's head, not in Notion, not in
+      Slack — it's in the source tree next to the code it constrains.
+    category: process
